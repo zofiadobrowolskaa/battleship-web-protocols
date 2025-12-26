@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getUserProfile, updateUserProfile, deleteUser } = require('../controllers/userController');
+const { getUserProfile, updateUserProfile, deleteUser, searchUsers } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 
 // all profile routes are protected (require JWT)
@@ -13,5 +13,8 @@ router.put('/profile', protect, updateUserProfile);
 
 // DELETE /api/users/profile
 router.delete('/profile', protect, deleteUser);
+
+// GET /api/users/search?query=abc
+router.get('/search', protect, searchUsers);
 
 module.exports = router;

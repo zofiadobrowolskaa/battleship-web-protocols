@@ -47,4 +47,32 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getUserProfile, updateUserProfile, deleteUser };
+// SEARCH Users by pattern
+const searchUsers = async (req, res) => {
+  // get query parameter from URL, e.g. ?query=abc
+  const { query } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ message: 'Search query is required' });
+  }
+
+  try {
+    // ILIKE for case-insensitive search
+    const pattern = `%${query}%`;
+
+    // query database for usernames matching the pattern
+    const users = await db.query(
+      'SELECT id, username, created_at FROM users WHERE username ILIKE $1',
+      [pattern]
+    );
+
+    // respond with the array of matching users
+    res.json(users.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Search failed' });
+  }
+};
+
+
+module.exports = { getUserProfile, updateUserProfile, deleteUser, searchUsers };
