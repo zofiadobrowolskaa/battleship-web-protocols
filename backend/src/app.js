@@ -10,6 +10,9 @@ const helmet = require('helmet');
 // HTTP request logger (shows requests in console)
 const morgan = require('morgan');
 
+// import the database pool to run queries with PostgreSQL
+const db = require('./config/db');
+
 // loads environment variables from .env file into process.env
 require('dotenv').config();
 
@@ -19,6 +22,26 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
+
+// table users
+const initDb = async () => {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) UNIQUE NOT NULL,
+      email VARCHAR(100) UNIQUE NOT NULL,
+      password VARCHAR(100) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  try {
+    await db.query(createTableQuery);
+    console.log("Table 'users' is ready");
+  } catch (err) {
+    console.error("Error creating table:", err);
+  }
+};
+initDb();
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
