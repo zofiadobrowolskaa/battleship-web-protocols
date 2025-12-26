@@ -18,6 +18,7 @@ require('dotenv').config();
 
 const initDb = require('./models/initDb');
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use(express.json());
 
 // routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
