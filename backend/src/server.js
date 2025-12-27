@@ -27,7 +27,7 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// create HTTP server based on Express app, Socket.IO needs access to the raw HTTP server
+// create HTTP server based on Express app
 const server = http.createServer(app);
 
 // initialize Socket.IO server between backend and frontend
@@ -37,6 +37,9 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
+
+// object used to track room states: players, boards, and later turns / scores
+const rooms = {};
 
 // database initialization
 initDb();
@@ -58,18 +61,30 @@ app.get('/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
-  // event: join Room
+  // player joins a game room, stores player info in the room state
   socket.on('join_room', (data) => {
     const { roomId, username } = data;
-    
-    // join the socket to a specific room
+
+    // join Socket.IO room
     socket.join(roomId);
+
+    // create room if it doesn't exist
+    if (!rooms[roomId]) {
+      rooms[roomId] = { players: [] };
+    }
+
+    // register player
+    rooms[roomId].players.push({
+      id: socket.id,
+      username
+    });
+
     console.log(`User ${username} joined room: ${roomId}`);
 
     // notify others in the room that a new player joined
     socket.to(roomId).emit('player_joined', {
       message: `Player ${username} has joined the game!`,
-      username: username
+      username
     });
   });
 
@@ -91,15 +106,64 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('receive_message', messageData);
   });
 
-  // event when player is ready with board
+  // player finished placing ships and is ready, server stores board for validation and game logic
   socket.on('ready_to_play', (data) => {
-    const { roomId, username } = data;
+    const { roomId, board, username } = data;
+
     console.log(`Player ${username} is ready in room ${roomId}`);
-    
-    // inform the other player in the room that opponent is ready
-    socket.to(roomId).emit('opponent_ready', { username });
+
+    const room = rooms[roomId];
+    if (!room) return;
+
+    // assign board to the correct player
+    const player = room.players.find(p => p.username === username);
+    if (player) {
+      player.board = board;
+    }
+
+    const readyPlayers = room.players.filter(p => p.board);
+    if (readyPlayers.length === 2) {
+   
+      // decide who starts (first joined player)
+      const starter = room.players[0].username;
+
+      io.to(roomId).emit('game_start', {
+        turn: starter
+      });
+    } else {
+      // only one player ready - notify opponent
+      socket.to(roomId).emit('opponent_ready', { username });
+    }
   });
-    
+
+  // player fires a shot, shot is forwarded to the opponent for validation
+  socket.on('fire', (data) => {
+    const { roomId, shooter, r, c } = data;
+
+    console.log(`Player ${shooter} fired at [${r}, ${c}] in room ${roomId}`);
+
+    // forward the shot ONLY to the opponent in the room
+    socket.to(roomId).emit('incoming_shot', {
+      r,
+      c,
+      shooter
+    });
+  });
+
+  // result of a shot (calculated by defending player), server broadcasts update to both players
+  socket.on('shot_result', (data) => {
+    const { roomId, r, c, result, shooter } = data;
+    // result: 'hit' | 'miss'
+
+    // inform BOTH players about the result so they can update their boards
+    io.to(roomId).emit('update_game', {
+      r,
+      c,
+      result,
+      shooter
+    });
+  });
+
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });

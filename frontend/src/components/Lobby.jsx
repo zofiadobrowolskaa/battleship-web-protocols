@@ -41,12 +41,50 @@ const Lobby = () => {
       toast(`${data.message} ⚓`, { icon: '🚢' });
     });
 
+    // listen for a shot fired by the opponent
+    socket.on("incoming_shot", (data) => {
+      const { r, c, shooter } = data;
+
+      // check locally if the shot hit any ship on my board
+      // (board contains ship names or null)
+      const isHit = myBoard && myBoard[r][c] !== null;
+      const result = isHit ? 'hit' : 'miss';
+
+      // send shot result back to the server
+      socket.emit("shot_result", {
+        roomId,
+        r,
+        c,
+        result,
+        shooter
+      });
+
+      // show feedback toast for the player
+      if (isHit) {
+        toast.error("We've been hit! 💥");
+      } else {
+        toast.success("Opponent missed! 🌊");
+      }
+    });
+
+    // listen for game state updates (result of any shot)
+    socket.on("update_game", (data) => {
+      const { r, c, result, shooter } = data;
+
+      console.log(
+        `Shot by ${shooter} at [${r}, ${c}] resulted in: ${result}`
+      );
+
+    });
+
     // cleanup listener on component unmount
     return () => {
       socket.off("player_joined");
+      socket.off("incoming_shot");
+      socket.off("update_game");
     };
 
-  }, []);
+  }, [myBoard, roomId]);
 
   return (
     <div className="lobby-wrapper">
