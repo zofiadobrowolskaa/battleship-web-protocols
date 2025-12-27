@@ -75,10 +75,22 @@ io.on('connection', (socket) => {
 
   // event: send Message (chat in game)
   socket.on('send_message', (data) => {
-    // send to everyone in the room including the sender
-    io.in(data.roomId).emit('receive_message', data);
-  });
+    const { roomId, username, message } = data;
 
+    // create message object with sender and timestamp
+    const messageData = {
+      username,
+      message,
+      time: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+
+    // send to everyone in the room including the sender
+    io.to(roomId).emit('receive_message', messageData);
+  });
+    
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
   });
