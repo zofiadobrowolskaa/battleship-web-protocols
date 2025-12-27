@@ -38,7 +38,7 @@ const io = new Server(server, {
   }
 });
 
-// object used to track room states: players, boards, and later turns / scores
+// object used to track room states: players, boards, turns, hits
 const rooms = {};
 
 // database initialization
@@ -70,13 +70,15 @@ io.on('connection', (socket) => {
 
     // create room if it doesn't exist
     if (!rooms[roomId]) {
-      rooms[roomId] = { players: [] };
+      rooms[roomId] = { players: [], turn: null };
     }
 
     // register player
     rooms[roomId].players.push({
       id: socket.id,
-      username
+      username,
+      board: null,
+      hitsTaken: 0 // number of ship segments hit by the opponent
     });
 
     console.log(`User ${username} joined room: ${roomId}`);
@@ -115,20 +117,22 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room) return;
 
-    // assign board to the correct player
+    // assign board and reset hit counter for this player
     const player = room.players.find(p => p.username === username);
     if (player) {
       player.board = board;
+      player.hitsTaken = 0;
     }
 
     const readyPlayers = room.players.filter(p => p.board);
-    if (readyPlayers.length === 2) {
-   
-      // decide who starts (first joined player)
-      const starter = room.players[0].username;
 
+    if (readyPlayers.length === 2) {
+      // decide who starts (first joined player)
+      room.turn = room.players[0].username;
+
+      // notify both players that the game has started
       io.to(roomId).emit('game_start', {
-        turn: starter
+        turn: room.turn
       });
     } else {
       // only one player ready - notify opponent
@@ -150,17 +154,40 @@ io.on('connection', (socket) => {
     });
   });
 
-  // result of a shot (calculated by defending player), server broadcasts update to both players
+  // result of a shot (calculated by defending player)
   socket.on('shot_result', (data) => {
     const { roomId, r, c, result, shooter } = data;
-    // result: 'hit' | 'miss'
 
-    // inform BOTH players about the result so they can update their boards
+    const room = rooms[roomId];
+    if (!room) return;
+
+    // if the shot was a miss, change the turn to the other player
+    if (result === 'miss') {
+      const nextPlayer = room.players.find(p => p.username !== room.turn);
+      room.turn = nextPlayer.username;
+    }
+
+    // if the shot was a hit, increase hit counter of the victim
+    if (result === 'hit') {
+      const victim = room.players.find(p => p.username !== shooter);
+      victim.hitsTaken += 1;
+
+      // 17 is the total number of ship segments in classic Battleship
+      if (victim.hitsTaken === 17) {
+        io.to(roomId).emit('game_over', {
+          winner: shooter
+        });
+        return; // stop further processing
+      }
+    }
+
+    // broadcast the result and next turn to both players
     io.to(roomId).emit('update_game', {
       r,
       c,
       result,
-      shooter
+      shooter,
+      nextTurn: room.turn
     });
   });
 

@@ -10,7 +10,12 @@ const Lobby = () => {
   const [isJoined, setIsJoined] = useState(false);
   const [myBoard, setMyBoard] = useState(null);
 
-   // join selected game room
+ 
+  const [gameStarted, setGameStarted] = useState(false);
+  const [turn, setTurn] = useState(null);
+  const [winner, setWinner] = useState(null);
+
+  // join selected game room
   const joinRoom = () => {
     if (roomId !== "") {
 
@@ -69,12 +74,27 @@ const Lobby = () => {
 
     // listen for game state updates (result of any shot)
     socket.on("update_game", (data) => {
-      const { r, c, result, shooter } = data;
+      const { r, c, result, shooter, nextTurn } = data;
 
       console.log(
         `Shot by ${shooter} at [${r}, ${c}] resulted in: ${result}`
       );
 
+      // update whose turn it is
+      if (nextTurn) setTurn(nextTurn);
+    });
+
+    // listen for game start event from server
+    socket.on("game_start", (data) => {
+      setGameStarted(true);
+      setTurn(data.turn); // initialize current turn
+      toast.success(`Game started! ${data.turn}'s turn`);
+    });
+
+    // listen for game over event
+    socket.on("game_over", (data) => {
+      setWinner(data.winner);
+      toast.success(`GAME OVER! Winner: ${data.winner}`, { duration: 6000 });
     });
 
     // cleanup listener on component unmount
@@ -82,6 +102,8 @@ const Lobby = () => {
       socket.off("player_joined");
       socket.off("incoming_shot");
       socket.off("update_game");
+      socket.off("game_start");
+      socket.off("game_over");
     };
 
   }, [myBoard, roomId]);
@@ -108,10 +130,24 @@ const Lobby = () => {
       )}
 
       {/* waiting for opponent + chat */}
-      {isJoined && myBoard && (
+      {isJoined && myBoard && !gameStarted && (
         <div className="auth-container">
           <h2>Game Lobby</h2>
           <h4>Waiting for opponent... ⚓</h4>
+          <Chat roomId={roomId} username={username} />
+        </div>
+      )}
+
+      {/* battle phase */}
+      {isJoined && myBoard && gameStarted && (
+        <div className="auth-container">
+          <h2>Battle Phase</h2>
+          <h4>Current turn: {turn}</h4>
+          {winner ? (
+            <h3>Winner: {winner} 🏆</h3>
+          ) : (
+            <p>Prepare your moves! ⚓</p>
+          )}
           <Chat roomId={roomId} username={username} />
         </div>
       )}
