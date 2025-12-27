@@ -54,9 +54,30 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// WebSockets logic, handles real-time client connections
+// WebSockets logic
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
+
+  // event: join Room
+  socket.on('join_room', (data) => {
+    const { roomId, username } = data;
+    
+    // join the socket to a specific room
+    socket.join(roomId);
+    console.log(`User ${username} joined room: ${roomId}`);
+
+    // notify others in the room that a new player joined
+    socket.to(roomId).emit('player_joined', {
+      message: `Player ${username} has joined the game!`,
+      username: username
+    });
+  });
+
+  // event: send Message (chat in game)
+  socket.on('send_message', (data) => {
+    // send to everyone in the room including the sender
+    io.in(data.roomId).emit('receive_message', data);
+  });
 
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
