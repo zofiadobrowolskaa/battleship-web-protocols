@@ -13,6 +13,11 @@ const morgan = require('morgan');
 // import the database pool to run queries with PostgreSQL
 const db = require('./config/db');
 
+// Node.js HTTP module (needed to attach Socket.IO to Express)
+const http = require('http');
+
+const { Server } = require('socket.io');
+
 // loads environment variables from .env file into process.env
 require('dotenv').config();
 
@@ -21,6 +26,17 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 
 const app = express();
+
+// create HTTP server based on Express app, Socket.IO needs access to the raw HTTP server
+const server = http.createServer(app);
+
+// initialize Socket.IO server between backend and frontend
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"]
+  }
+});
 
 // database initialization
 initDb();
@@ -38,7 +54,16 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// WebSockets logic, handles real-time client connections
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

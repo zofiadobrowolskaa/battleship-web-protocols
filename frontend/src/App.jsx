@@ -1,9 +1,24 @@
 import { Routes, Route, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { useEffect } from 'react';
+import socket from './sockets/socket';
 import Login from './components/Login';
 import Register from './components/Register';
 
 function App() {
+  useEffect(() => {
+    socket.connect();
+
+    socket.on('connect', () => {
+      console.log('Connected to server via WS! ID:', socket.id);
+    });
+
+    // disconnect socket on app unmount
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+  
   return (
     <>
       <nav className="navbar">
