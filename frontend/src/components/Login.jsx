@@ -10,8 +10,8 @@ const Login = () => {
 
   const validationSchema = Yup.object({
     email: Yup.string()
-      .email('Invalid email format')
-      .required('Required'),
+      .required('Required')
+      .matches(/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/, 'Invalid email format'),
     password: Yup.string()
       .required('Required'),
   });

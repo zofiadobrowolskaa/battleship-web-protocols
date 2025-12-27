@@ -90,6 +90,15 @@ io.on('connection', (socket) => {
     // send to everyone in the room including the sender
     io.to(roomId).emit('receive_message', messageData);
   });
+
+  // event when player is ready with board
+  socket.on('ready_to_play', (data) => {
+    const { roomId, username } = data;
+    console.log(`Player ${username} is ready in room ${roomId}`);
+    
+    // inform the other player in the room that opponent is ready
+    socket.to(roomId).emit('opponent_ready', { username });
+  });
     
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.id}`);
