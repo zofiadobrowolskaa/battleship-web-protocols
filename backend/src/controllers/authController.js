@@ -7,7 +7,7 @@ const validateRegister = (username, email, password) => {
     return 'Username must be at least 3 characters';
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
   if (!email || !emailRegex.test(email)) {
     return 'Invalid email format';
   }
