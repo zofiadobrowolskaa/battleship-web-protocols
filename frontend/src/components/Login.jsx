@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import toast from 'react-hot-toast';
@@ -7,6 +7,7 @@ import API from '../api/axios';
 // destructure onLoginSuccess from props to update authentication state in App.jsx
 const Login = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
+  const location = useLocation(); // hook to access the current location and state
 
   const validationSchema = Yup.object({
     email: Yup.string()
@@ -33,7 +34,10 @@ const Login = ({ onLoginSuccess }) => {
 
         // notify App.jsx that the user has successfully authenticated
         onLoginSuccess(); 
-        navigate('/');
+
+        // redirect to the original destination or home page
+        const from = location.state?.from?.pathname || '/';
+        navigate(from, { replace: true });
 
       } catch (err) {
         toast.error(err.response?.data?.message || 'Login failed');
@@ -72,6 +76,11 @@ const Login = ({ onLoginSuccess }) => {
       <button type="submit" disabled={formik.isSubmitting}>
         {formik.isSubmitting ? 'Logging in...' : 'Login'}
       </button>
+      
+      <p className="auth-switch">
+        Don't have an account? 
+        <Link to="/register" state={{ from: location.state?.from }}> Register here</Link>
+      </p>
     </form>
   );
 };

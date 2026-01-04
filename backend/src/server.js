@@ -61,6 +61,24 @@ app.get('/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
+  socket.on('check_room_availability', (data, callback) => {
+    const { roomId, username } = data;
+    const room = rooms[roomId];
+
+    if (room) {
+      const existingPlayer = room.players.find(p => p.username === username);
+      // if player is not already in the room and room is full
+      if (!existingPlayer && room.players.length >= 2) {
+        return callback({ 
+          canJoin: false, 
+          message: 'Room is full! Max 2 players allowed.' 
+        });
+      }
+    }
+    // room doesn't exist yet or has space
+    callback({ canJoin: true });
+  });
+
   // player joins a game room, stores player info in the room state
   socket.on('join_room', (data) => {
     const { roomId, username } = data;
@@ -76,7 +94,7 @@ io.on('connection', (socket) => {
 
     const room = rooms[roomId];
     const existingPlayer = room.players.find(p => p.username === username);
-
+    
     // player limit logic
     if (!existingPlayer && room.players.length >= 2) {
       console.log(`Room ${roomId} is full. User ${username} tried to join.`);
@@ -97,34 +115,36 @@ io.on('connection', (socket) => {
         board: null,
         hitsTaken: 0 // number of ship segments hit by the opponent
       });
+
+      console.log(`User ${username} joined room: ${roomId}`);
+
+      // create a system message about the join event
+      const joinMessage = {
+        username: 'System',
+        message: `${username} entered the room.`,
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        isSystem: true
+      };
+
+      // save system message to history and broadcast to everyone
+      room.chatHistory.push(joinMessage);
+
+      // notify others in the room that a new player joined
+      socket.to(roomId).emit('player_joined', { 
+          message: `${username} entered the room!` 
+        });
+
+      io.to(roomId).emit('receive_message', joinMessage);
+
     } else {
       // reconnect: update socket ID for existing player
       existingPlayer.id = socket.id; 
     }
 
-    console.log(`User ${username} joined room: ${roomId}`);
-
     // send chat history to the joining player so they can see previous messages
     if (room.chatHistory.length > 0) {
       socket.emit('chat_history', room.chatHistory);
     }
-
-    // notify others in the room that a new player joined
-    socket.to(roomId).emit('player_joined', { 
-        message: `${username} entered the room!` 
-      });
-
-    // create a system message about the join event
-    const joinMessage = {
-      username: 'System',
-      message: `${username} entered the room.`,
-      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      isSystem: true
-    };
-
-    // save system message to history and broadcast to everyone
-    room.chatHistory.push(joinMessage);
-    io.to(roomId).emit('receive_message', joinMessage);
   });
 
   socket.on('request_chat_history', (roomId) => {

@@ -27,7 +27,17 @@ const Lobby = () => {
   // join selected game room by updating the URL path
   const joinRoom = () => {
     if (roomId.trim() !== "") {
-      navigate(`/game/${roomId}`);
+      // connect to socket if not already connected to perform availability check
+      if (!socket.connected) socket.connect();
+
+      // check with server if room is available before navigating to prevent screen flicker
+      socket.emit("check_room_availability", { roomId, username }, (response) => {
+        if (response.canJoin) {
+          navigate(`/game/${roomId}`);
+        } else {
+          toast.error(response.message);
+        }
+      });
     } else {
       toast.error("Enter a valid Room ID");
     }
@@ -78,9 +88,10 @@ const Lobby = () => {
 
       // cleanup function to disconnect socket when component unmounts or room changes
       return () => {
-        console.log("Leaving room cleanup...");
         socket.disconnect();
       };
+    } else {
+      setIsJoined(false);
     }
   }, [urlRoomId]);
 
@@ -94,8 +105,10 @@ const Lobby = () => {
     // handle error messages from the server (e.g., room is full)
     socket.on("error_message", (data) => {
       toast.error(data.message);
+      // smoothly disconnect and return to lobby if an error occurs after joining
+      socket.disconnect();
       setIsJoined(false);
-      navigate('/lobby');
+      navigate('/lobby', { replace: true });
     });
 
     // listen for game state updates and winner announcements

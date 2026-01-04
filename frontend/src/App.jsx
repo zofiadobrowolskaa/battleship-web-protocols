@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Lobby from './components/Lobby';
 import Home from './components/Home';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   // check if token exists in session storage to initialize authentication state
@@ -52,9 +53,21 @@ function App() {
         <Route path="/" element={<Home isAuthenticated={isAuthenticated} />} />
         <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/lobby" element={<Lobby />} />
+        <Route path="/lobby" 
+          element={
+            <ProtectedRoute>
+              <Lobby />
+            </ProtectedRoute>
+          } 
+        />
         {/* dynamic route for specific game rooms using roomId parameter */}
-        <Route path="/game/:roomId" element={<Lobby />} />
+        <Route path="/game/:roomId" 
+          element={
+            <ProtectedRoute>
+              <Lobby />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
 
       <Toaster position="top-right" />

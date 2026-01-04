@@ -54,9 +54,6 @@ const Chat = ({ roomId, username }) => {
     socket.on("receive_message", handleMessage);
     socket.on("chat_history", handleHistory);
 
-    // request the stored chat history from the server for this specific room
-    socket.emit("request_chat_history", roomId);
-
     // remove listeners on component unmount
     return () => {
       socket.off("receive_message", handleMessage);
