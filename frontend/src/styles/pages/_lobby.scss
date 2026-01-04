@@ -1,0 +1,106 @@
+.lobby-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 50px;
+}
+
+.setup-container {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  background: white;
+  padding: 40px;
+  border-radius: 14px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  max-width: fit-content;
+  margin: 20px auto;
+
+  .setup-header {
+    text-align: center;
+    margin: 0 auto;
+    width: 100%;
+    font-weight: 600;
+  }
+}
+
+.setup-content {
+  display: flex;
+  flex-direction: row;
+  gap: 40px;
+}
+
+.ships-to-place {
+  width: 250px;
+  text-align: left;
+  border-right: 2px solid #f1f0f0;
+  padding-right: 30px;
+  h3 { margin-top: 0; color: #0a2540; }
+
+  .ship-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin: 10px 0;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: background 0.2s;
+    input[type="checkbox"] { margin-right: 12px; cursor: pointer; }
+    &:hover { background: #f8f9fa; }
+    &.active {
+      color: #28a745;
+      font-weight: bold;
+      background: #e8f5e9;
+      border-color: #28a745;
+    }
+    &.placed {
+      background-color: #f1f1f1;
+      .ship-info { text-decoration: line-through; opacity: 0.5; }
+    }
+  }
+}
+
+.board-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  h3 { margin-top: 0; }
+}
+
+.start-btn {
+  margin-top: 25px;
+  padding: 15px 30px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+  &:disabled { background-color: #ccc; cursor: not-allowed; }
+  &:hover:not(:disabled) { background-color: #218838; }
+}
+
+.floating-leave-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px; 
+  z-index: 1000;
+  padding: 14px;
+  border-radius: 20px;
+  background-color: #61b9f8; 
+  color: white;
+  border: 2px solid #fff;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  &:hover { transform: scale(1.05); background-color: #418af0; }
+}
