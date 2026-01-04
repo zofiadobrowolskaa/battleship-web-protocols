@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import Chat from './Chat';
 import GameBoard from './GameBoard';
 import BattleField from './BattleField';
+import mqttClient from '../api/mqtt';
 
 const Lobby = () => {
   // extract roomId from URL parameters and initialize navigation hook
@@ -23,6 +24,7 @@ const Lobby = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [turn, setTurn] = useState(null);
   const [winner, setWinner] = useState(null);
+  const [globalNews, setGlobalNews] = useState([]);
 
   // join selected game room by updating the URL path
   const joinRoom = () => {
@@ -163,21 +165,70 @@ const Lobby = () => {
     }
   }, [urlRoomId]);
 
+  // effect: handles global MQTT news feed with auto-dismiss functionality
+  useEffect(() => {
+    // defined separately to allow clean removal of the listener
+    const handleMqttMessage = (topic, message) => {
+      const newsText = message.toString();
+      const messageId = Date.now(); // unique ID for each message
+
+      // using functional update to maintain correct state and add unique message objects
+      setGlobalNews(prev => {
+        // prevent duplicate identical messages from being added simultaneously
+        if (prev.length > 0 && prev[0].text === newsText) return prev;
+        return [{ id: messageId, text: newsText }, ...prev].slice(0, 5);
+      });
+
+      // auto-remove this specific message from the feed after 7 seconds
+      setTimeout(() => {
+        setGlobalNews(prev => prev.filter(msg => msg.id !== messageId));
+      }, 7000);
+    };
+
+    // subscribe to the global news topic upon connection
+    mqttClient.on('connect', () => {
+      mqttClient.subscribe('battleship/global/news');
+    });
+
+    // avoid duplicate listeners by removing old one before adding new one
+    mqttClient.removeListener('message', handleMqttMessage);
+    mqttClient.on('message', handleMqttMessage);
+
+    // cleanup MQTT subscriptions and listeners on component unmount
+    return () => {
+      mqttClient.unsubscribe('battleship/global/news');
+      mqttClient.removeListener('message', handleMqttMessage);
+    };
+  }, []);
+
   return (
     <div className="lobby-wrapper">
       {/* room join screen */}
       {!isJoined && (
-        <div className="auth-container">
-          <h2>Game Lobby</h2>
-          <input 
-            type="text" 
-            placeholder="Room ID (e.g. 123)" 
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)} 
-            onKeyDown={(e) => e.key === "Enter" && joinRoom()}
-          />
-          <button onClick={joinRoom}>Join Match</button>
-        </div>
+        <>
+          <div className="auth-container">
+            <h2>Game Lobby</h2>
+            <input 
+              type="text" 
+              placeholder="Room ID (e.g. 123)" 
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)} 
+              onKeyDown={(e) => e.key === "Enter" && joinRoom()}
+            />
+            <button onClick={joinRoom}>Join Match</button>
+          </div>
+
+          {/* MQTT News Feed - displaying auto-dismissing news bubbles */}
+          <div className="global-news-feed">
+            <h4>Live Battle Feed</h4>
+            {globalNews.map((news) => (
+              <div key={news.id} className="news-item">
+                <span className="icon">📢</span>
+                <span>{news.text}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* ship placement phase */}
