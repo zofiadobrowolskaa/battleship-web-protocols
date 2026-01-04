@@ -6,6 +6,7 @@ import Chat from './Chat';
 import GameBoard from './GameBoard';
 import BattleField from './BattleField';
 import mqttClient from '../api/mqtt';
+import GlobalChat from './GlobalChat'
 
 const Lobby = () => {
   // extract roomId from URL parameters and initialize navigation hook
@@ -169,20 +170,23 @@ const Lobby = () => {
   useEffect(() => {
     // defined separately to allow clean removal of the listener
     const handleMqttMessage = (topic, message) => {
-      const newsText = message.toString();
-      const messageId = Date.now(); // unique ID for each message
+      if (topic === 'battleship/global/news') {
+        const newsText = message.toString();
+        const messageId = Date.now(); // unique ID for each message
 
-      // using functional update to maintain correct state and add unique message objects
-      setGlobalNews(prev => {
-        // prevent duplicate identical messages from being added simultaneously
-        if (prev.length > 0 && prev[0].text === newsText) return prev;
-        return [{ id: messageId, text: newsText }, ...prev].slice(0, 5);
-      });
+        // using functional update to maintain correct state and add unique message objects
+        setGlobalNews(prev => {
+          // prevent duplicate identical messages from being added simultaneously
+          if (prev.length > 0 && prev[0].text === newsText) return prev;
+          return [{ id: messageId, text: newsText }, ...prev].slice(0, 5);
+        });
 
-      // auto-remove this specific message from the feed after 7 seconds
-      setTimeout(() => {
-        setGlobalNews(prev => prev.filter(msg => msg.id !== messageId));
-      }, 7000);
+        // auto-remove this specific message from the feed after 7 seconds
+        setTimeout(() => {
+          setGlobalNews(prev => prev.filter(msg => msg.id !== messageId));
+        }, 7000);
+      }
+      
     };
 
     // subscribe to the global news topic upon connection
@@ -203,6 +207,8 @@ const Lobby = () => {
 
   return (
     <div className="lobby-wrapper">
+      {!isJoined && <GlobalChat username={username} />}
+      
       {/* room join screen */}
       {!isJoined && (
         <>
