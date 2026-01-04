@@ -38,7 +38,7 @@ const io = new Server(server, {
   }
 });
 
-// object used to track room states: players, boards, turns, hits
+// object used to track room states: players, boards, turns, hits, and chat history
 const rooms = {};
 
 // database initialization
@@ -65,133 +65,222 @@ io.on('connection', (socket) => {
   socket.on('join_room', (data) => {
     const { roomId, username } = data;
 
-    // join Socket.IO room
-    socket.join(roomId);
-
-    // create room if it doesn't exist
+    // create room if it doesn't exist, including chat history
     if (!rooms[roomId]) {
-      rooms[roomId] = { players: [], turn: null };
+      rooms[roomId] = { 
+        players: [], 
+        turn: null, 
+        chatHistory: [] // stores previous messages for new joiners
+      };
     }
 
-    // register player
-    rooms[roomId].players.push({
-      id: socket.id,
-      username,
-      board: null,
-      hitsTaken: 0 // number of ship segments hit by the opponent
-    });
+    const room = rooms[roomId];
+    const existingPlayer = room.players.find(p => p.username === username);
+
+    // player limit logic
+    if (!existingPlayer && room.players.length >= 2) {
+      console.log(`Room ${roomId} is full. User ${username} tried to join.`);
+      socket.emit('error_message', { message: 'Room is full! Max 2 players allowed.' });
+      return; 
+    }
+
+    // join Socket.IO room
+    socket.join(roomId);
+    // store roomId in socket object for easier access during disconnect
+    socket.currentRoom = roomId;
+
+    if (!existingPlayer) {
+      // register player
+      room.players.push({
+        id: socket.id,
+        username,
+        board: null,
+        hitsTaken: 0 // number of ship segments hit by the opponent
+      });
+    } else {
+      // reconnect: update socket ID for existing player
+      existingPlayer.id = socket.id; 
+    }
 
     console.log(`User ${username} joined room: ${roomId}`);
 
+    // send chat history to the joining player so they can see previous messages
+    if (room.chatHistory.length > 0) {
+      socket.emit('chat_history', room.chatHistory);
+    }
+
     // notify others in the room that a new player joined
-    socket.to(roomId).emit('player_joined', {
-      message: `Player ${username} has joined the game!`,
-      username
-    });
-  });
+    socket.to(roomId).emit('player_joined', { 
+        message: `${username} entered the room!` 
+      });
 
-  // event: send Message (chat in game)
-  socket.on('send_message', (data) => {
-    const { roomId, username, message } = data;
-
-    // create message object with sender and timestamp
-    const messageData = {
-      username,
-      message,
-      time: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+    // create a system message about the join event
+    const joinMessage = {
+      username: 'System',
+      message: `${username} entered the room.`,
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      isSystem: true
     };
 
-    // send to everyone in the room including the sender
-    io.to(roomId).emit('receive_message', messageData);
+    // save system message to history and broadcast to everyone
+    room.chatHistory.push(joinMessage);
+    io.to(roomId).emit('receive_message', joinMessage);
+  });
+
+  socket.on('request_chat_history', (roomId) => {
+    const room = rooms[roomId];
+    if (room && room.chatHistory) {
+      socket.emit('chat_history', room.chatHistory);
+    }
   });
 
   // player finished placing ships and is ready, server stores board for validation and game logic
   socket.on('ready_to_play', (data) => {
-    const { roomId, board, username } = data;
-
-    console.log(`Player ${username} is ready in room ${roomId}`);
-
+    const { roomId, board } = data;
     const room = rooms[roomId];
     if (!room) return;
 
-    // assign board and reset hit counter for this player
-    const player = room.players.find(p => p.username === username);
+    // assign board and reset hit counter for this player using socket.id
+    const player = room.players.find(p => p.id === socket.id);
     if (player) {
       player.board = board;
       player.hitsTaken = 0;
     }
 
-    const readyPlayers = room.players.filter(p => p.board);
+    const readyPlayers = room.players.filter(p => p.board !== null);
 
     if (readyPlayers.length === 2) {
       // decide who starts (first joined player)
       room.turn = room.players[0].username;
-
+      
       // notify both players that the game has started
       io.to(roomId).emit('game_start', {
         turn: room.turn
       });
     } else {
       // only one player ready - notify opponent
-      socket.to(roomId).emit('opponent_ready', { username });
+      socket.to(roomId).emit('opponent_ready', { username: player?.username });
     }
   });
 
-  // player fires a shot, shot is forwarded to the opponent for validation
+  // player fires a shot, shot is processed and result is broadcasted
   socket.on('fire', (data) => {
-    const { roomId, shooter, r, c } = data;
-
-    console.log(`Player ${shooter} fired at [${r}, ${c}] in room ${roomId}`);
-
-    // forward the shot ONLY to the opponent in the room
-    socket.to(roomId).emit('incoming_shot', {
-      r,
-      c,
-      shooter
-    });
-  });
-
-  // result of a shot (calculated by defending player)
-  socket.on('shot_result', (data) => {
-    const { roomId, r, c, result, shooter } = data;
-
+    const { roomId, r, c } = data;
     const room = rooms[roomId];
     if (!room) return;
 
-    // if the shot was a miss, change the turn to the other player
-    if (result === 'miss') {
-      const nextPlayer = room.players.find(p => p.username !== room.turn);
-      room.turn = nextPlayer.username;
-    }
+    const shooter = room.players.find(p => p.id === socket.id);
+    const victim = room.players.find(p => p.id !== socket.id);
 
-    // if the shot was a hit, increase hit counter of the victim
+    // ensure both players exist and it is the shooter's turn
+    if (!shooter || !victim || room.turn !== shooter.username) return;
+
+    console.log(`Room ${roomId}: ${shooter.username} fired at [R:${r}, C:${c}]`);
+
+    // validate hit on server-side stored board
+    const shipName = victim.board[r][c]; // Get ship name (e.g., 'Carrier') or null
+    const result = shipName !== null ? 'hit' : 'miss';
+    let sunkShipName = null;
+
     if (result === 'hit') {
-      const victim = room.players.find(p => p.username !== shooter);
+      // if the shot was a hit, increase hit counter of the victim
       victim.hitsTaken += 1;
 
-      // 17 is the total number of ship segments in classic Battleship
-      if (victim.hitsTaken === 17) {
-        io.to(roomId).emit('game_over', {
-          winner: shooter
-        });
-        return; // stop further processing
+      // mark the coordinate on the victim's board as hit so it's no longer counted as a ship segment
+      victim.board[r][c] = 'HIT_SEGMENT';
+
+      // check for sinking:
+      // if no cells on the victim's board contain the original ship name, it's sunk
+      const isSunk = !victim.board.some(row => row.includes(shipName));
+      if (isSunk) {
+        sunkShipName = shipName;
+        console.log(`Room ${roomId}: ${shooter.username} sunk the enemy's ${sunkShipName}!`);
       }
     }
 
-    // broadcast the result and next turn to both players
+    // change the turn to the other player
+    room.turn = victim.username;
+    
+    // check if all 17 ship segments are hit
+    const isGameOver = victim.hitsTaken === 17;
+
+    // broadcast the result, next turn, and sunk ship info to both players
     io.to(roomId).emit('update_game', {
       r,
       c,
       result,
-      shooter,
-      nextTurn: room.turn
+      shooter: shooter.username,
+      nextTurn: room.turn,
+      sunkShip: sunkShipName, // sends ship name if it was just sunk, otherwise null
+      gameOver: isGameOver ? shooter.username : null
     });
+
+    if (isGameOver) {
+      console.log(`Room ${roomId}: Game Over. Winner: ${shooter.username}`);
+    }
   });
 
+  // event: send message (chat in game)
+  socket.on('send_message', (data) => {
+    const { roomId, username, message } = data;
+    const room = rooms[roomId];
+    if (!room) return;
+
+    // create message object with sender and timestamp
+    const messageData = {
+      username,
+      message,
+      time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    // save message to room history and send to everyone in the room
+    room.chatHistory.push(messageData);
+    io.to(roomId).emit('receive_message', messageData);
+  });
+
+  // remove player from the room state
   socket.on('disconnect', () => {
+    const roomId = socket.currentRoom;
+    if (roomId && rooms[roomId]) {
+      const room = rooms[roomId];
+      const playerIndex = room.players.findIndex(p => p.id === socket.id);
+      
+      if (playerIndex !== -1) {
+        const leavingPlayer = room.players[playerIndex];
+        
+        // forfeit logic: if a game was in progress (room.turn is set) and there were 2 players,
+        // the remaining player is declared the winner by forfeit.
+        if (room.players.length === 2 && room.turn !== null) {
+          const winnerPlayer = room.players.find(p => p.id !== socket.id);
+          
+          if (winnerPlayer) {
+            console.log(`Room ${roomId}: ${leavingPlayer.username} left during battle. Winner by forfeit: ${winnerPlayer.username}`);
+            
+            // notify the remaining player about the victory due to opponent's disconnection
+            io.to(roomId).emit('update_game', {
+              gameOver: winnerPlayer.username,
+              isForfeit: true
+            });
+          }
+        }
+
+        // notify others about disconnection and save it to history
+        const disconnectMsg = {
+          username: 'System',
+          message: `${leavingPlayer.username} disconnected.`,
+          time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          isSystem: true
+        };
+        
+        room.chatHistory.push(disconnectMsg);
+        io.to(roomId).emit('receive_message', disconnectMsg);
+
+        // remove the disconnected player from the room state
+        room.players.splice(playerIndex, 1);
+
+        if (room.players.length === 0) delete rooms[roomId];
+      }
+    }
     console.log(`User disconnected: ${socket.id}`);
   });
 });

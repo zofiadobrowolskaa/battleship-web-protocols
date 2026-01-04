@@ -1,87 +1,125 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import socket from '../sockets/socket';
 import toast from 'react-hot-toast';
 import Chat from './Chat';
 import GameBoard from './GameBoard';
+import BattleField from './BattleField';
 
 const Lobby = () => {
-  const [roomId, setRoomId] = useState('');
-  const [username, setUsername] = useState('Player');
-  const [isJoined, setIsJoined] = useState(false);
-  const [myBoard, setMyBoard] = useState(null);
+  // extract roomId from URL parameters and initialize navigation hook
+  const { roomId: urlRoomId } = useParams();
+  const navigate = useNavigate();
 
- 
+  const [roomId, setRoomId] = useState(urlRoomId || '');
+  
+  // get username from sessionStorage or random
+  const [username, setUsername] = useState(() => {
+    return sessionStorage.getItem('username') || `Player_${Math.floor(Math.random() * 1000)}`;
+  });
+  
+  const [isJoined, setIsJoined] = useState(!!urlRoomId);
+  const [myBoard, setMyBoard] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [turn, setTurn] = useState(null);
   const [winner, setWinner] = useState(null);
 
-  // join selected game room
+  // join selected game room by updating the URL path
   const joinRoom = () => {
-    if (roomId !== "") {
-
-      // connect to WebSocket only when joining a room
-      socket.connect();
-      
-      // notify server that user wants to join a room
-      socket.emit("join_room", { roomId, username });
-
-      // show chat and game UI after joining
-      setIsJoined(true);
-
-      toast.success(`Joined room: ${roomId}`);
+    if (roomId.trim() !== "") {
+      navigate(`/game/${roomId}`);
+    } else {
+      toast.error("Enter a valid Room ID");
     }
+  };
+
+  // resets local state and disconnects socket when manually leaving the room
+  const leaveRoom = () => {
+    setIsJoined(false);
+    setMyBoard(null);
+    setGameStarted(false);
+    setRoomId('');
+    socket.disconnect(); 
+    navigate('/lobby');
+  };
+
+  // redirects the user back to the lobby view after game completion
+  const resetToLobby = () => {
+    setIsJoined(false);
+    setMyBoard(null);
+    setGameStarted(false);
+    setWinner(null);
+    setTurn(null);
+    navigate('/lobby');
   };
 
   // called when player finishes placing ships, sends board state to the server
   const handleBoardReady = (board) => {
     setMyBoard(board);
     // notify server that player is ready to start the game
-    socket.emit("ready_to_play", { roomId, board, username });
+    socket.emit("ready_to_play", { roomId: urlRoomId || roomId, board, username });
   };
 
+  // effect handles joining the room based on URL changes
   useEffect(() => {
+    if (urlRoomId) {
+      // ensure the correct username is used from the current session
+      const currentUsername = sessionStorage.getItem('username') || username;
+      setUsername(currentUsername);
 
+      // connect to WebSocket only when joining a room
+      socket.connect();
+      // notify server that user wants to join a room
+      socket.emit("join_room", { roomId: urlRoomId, username: currentUsername });
+      
+      // show chat and game UI after joining
+      setIsJoined(true);
+      setRoomId(urlRoomId);
+
+      // cleanup function to disconnect socket when component unmounts or room changes
+      return () => {
+        console.log("Leaving room cleanup...");
+        socket.disconnect();
+      };
+    }
+  }, [urlRoomId]);
+
+  // effect: listeners for Socket.IO events
+  useEffect(() => {
     // listen for notification when another player joins the room
     socket.on("player_joined", (data) => {
       toast(`${data.message} ⚓`, { icon: '🚢' });
     });
 
-    // listen for a shot fired by the opponent
-    socket.on("incoming_shot", (data) => {
-      const { r, c, shooter } = data;
-
-      // check locally if the shot hit any ship on my board
-      // (board contains ship names or null)
-      const isHit = myBoard && myBoard[r][c] !== null;
-      const result = isHit ? 'hit' : 'miss';
-
-      // send shot result back to the server
-      socket.emit("shot_result", {
-        roomId,
-        r,
-        c,
-        result,
-        shooter
-      });
-
-      // show feedback toast for the player
-      if (isHit) {
-        toast.error("We've been hit! 💥");
-      } else {
-        toast.success("Opponent missed! 🌊");
-      }
+    // handle error messages from the server (e.g., room is full)
+    socket.on("error_message", (data) => {
+      toast.error(data.message);
+      setIsJoined(false);
+      navigate('/lobby');
     });
 
-    // listen for game state updates (result of any shot)
+    // listen for game state updates and winner announcements
     socket.on("update_game", (data) => {
-      const { r, c, result, shooter, nextTurn } = data;
-
-      console.log(
-        `Shot by ${shooter} at [${r}, ${c}] resulted in: ${result}`
-      );
-
+      const { nextTurn, gameOver } = data;
+      
       // update whose turn it is
       if (nextTurn) setTurn(nextTurn);
+
+      // listen for game over event
+      if (gameOver) {
+        setWinner(gameOver);
+        
+        if (gameOver === username) {
+          toast.success("VICTORY! You won the battle! 🏆", { duration: 5000 });
+        } else {
+          toast.error(`DEFEAT! ${gameOver} won the game. 💀`, { duration: 5000 });
+        }
+
+        // return to lobby after a short delay to let users see the final result
+        setTimeout(() => {
+          resetToLobby();
+        }, 8000);
+      }
     });
 
     // listen for game start event from server
@@ -91,34 +129,39 @@ const Lobby = () => {
       toast.success(`Game started! ${data.turn}'s turn`);
     });
 
-    // listen for game over event
-    socket.on("game_over", (data) => {
-      setWinner(data.winner);
-      toast.success(`GAME OVER! Winner: ${data.winner}`, { duration: 6000 });
-    });
-
-    // cleanup listener on component unmount
+    // cleanup listeners on component unmount
     return () => {
       socket.off("player_joined");
-      socket.off("incoming_shot");
+      socket.off("error_message");
       socket.off("update_game");
       socket.off("game_start");
-      socket.off("game_over");
     };
+  }, [urlRoomId, roomId, username, navigate]);
 
-  }, [myBoard, roomId]);
+  // reset states when navigating back to the main lobby path (/lobby)
+  useEffect(() => {
+    if (!urlRoomId) {
+      setIsJoined(false);
+      setMyBoard(null);
+      setGameStarted(false);
+      setWinner(null);
+      setTurn(null);
+      setRoomId('');
+    }
+  }, [urlRoomId]);
 
   return (
     <div className="lobby-wrapper">
-      
-      {/* room join screen*/}
+      {/* room join screen */}
       {!isJoined && (
         <div className="auth-container">
           <h2>Game Lobby</h2>
           <input 
             type="text" 
             placeholder="Room ID (e.g. 123)" 
+            value={roomId}
             onChange={(e) => setRoomId(e.target.value)} 
+            onKeyDown={(e) => e.key === "Enter" && joinRoom()}
           />
           <button onClick={joinRoom}>Join Match</button>
         </div>
@@ -126,31 +169,46 @@ const Lobby = () => {
 
       {/* ship placement phase */}
       {isJoined && !myBoard && (
-        <GameBoard onBoardReady={handleBoardReady} />
+        <>
+          <GameBoard onBoardReady={handleBoardReady} />
+        </>
       )}
 
-      {/* waiting for opponent + chat */}
+      {/* waiting for opponent screen */}
       {isJoined && myBoard && !gameStarted && (
         <div className="auth-container">
-          <h2>Game Lobby</h2>
+          <h2>Room: {urlRoomId || roomId}</h2>
           <h4>Waiting for opponent... ⚓</h4>
-          <Chat roomId={roomId} username={username} />
         </div>
       )}
 
-      {/* battle phase */}
+      {/* battle phase - Battlefield component handles the grid and turns */}
       {isJoined && myBoard && gameStarted && (
-        <div className="auth-container">
-          <h2>Battle Phase</h2>
-          <h4>Current turn: {turn}</h4>
-          {winner ? (
-            <h3>Winner: {winner} 🏆</h3>
-          ) : (
-            <p>Prepare your moves! ⚓</p>
-          )}
-          <Chat roomId={roomId} username={username} />
+        <div className="setup-container battle-phase">
+            <h2 className="setup-header">Battle in Room: {urlRoomId || roomId}</h2>
+            <div className="battle-layout">
+              <BattleField 
+                  roomId={urlRoomId || roomId} 
+                  username={username} 
+                  myBoard={myBoard} 
+                  currentTurn={turn}
+                  setTurn={setTurn} 
+                  winner={winner}
+                  setWinner={setWinner} 
+              />
+            </div>
         </div>
       )}
+
+      {/* floating Leave Room button visible only when joined */}
+      {isJoined && (
+        <button className="floating-leave-btn" onClick={leaveRoom} title="Leave Room">
+          Leave Room
+        </button>
+      )}
+
+      {/* floating chat component */}
+      {isJoined && <Chat roomId={urlRoomId || roomId} username={username} />}
     </div>
   );
 };
