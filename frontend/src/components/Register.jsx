@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import toast from 'react-hot-toast';
@@ -6,6 +6,7 @@ import API from '../api/axios';
 
 const Register = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // hook to access the current location state
 
   // define Yup validation schema for form inputs
   const validationSchema = Yup.object({
@@ -33,7 +34,7 @@ const Register = () => {
         // send POST request to register endpoint with form values
         await API.post('/auth/register', values);
         toast.success('Registered! Please login 🚢');
-        navigate('/login');
+        navigate('/login', { state: { from: location.state?.from } });
       } catch (err) {
         toast.error(err.response?.data?.message || 'Registration failed');
       } finally {
@@ -82,6 +83,11 @@ const Register = () => {
       <button type="submit" disabled={formik.isSubmitting}>
         {formik.isSubmitting ? 'Registering...' : 'Register'}
       </button>
+
+      <p className="auth-switch">
+        Already have an account? 
+        <Link to="/login" state={{ from: location.state?.from }}> Login here</Link>
+      </p>
     </form>
   );
 };

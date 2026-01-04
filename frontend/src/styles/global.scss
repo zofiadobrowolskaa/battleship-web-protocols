@@ -1,0 +1,29 @@
+@use './components/navbar';
+@use './components/auth';
+@use './components/grid';
+@use './components/chat';
+
+@use './pages/home';
+@use './pages/lobby';
+@use './pages/battle';
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #0a2540;
+  background-color: #f1f0f0;
+}
+
+.page {
+  text-align: center;
+  margin-top: 60px;
+  font-size: 1.8rem;
+}
+
+.error-message {
+  color: #e63946;
+  font-size: 0.8rem;
+  margin-top: -10px;
+  margin-bottom: 10px;
+  margin-left: 4px;
+}
