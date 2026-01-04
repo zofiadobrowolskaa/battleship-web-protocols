@@ -18,6 +18,9 @@ const http = require('http');
 
 const { Server } = require('socket.io');
 
+// MQTT library for backend messaging
+const mqtt = require('mqtt'); //
+
 // loads environment variables from .env file into process.env
 require('dotenv').config();
 
@@ -36,6 +39,17 @@ const io = new Server(server, {
     origin: "http://localhost:5173",
     methods: ["GET", "POST"]
   }
+});
+
+// MQTT client configuration - connects backend to HiveMQ Cloud
+const mqttClient = mqtt.connect(`wss://${process.env.VITE_MQTT_HOST}:8884/mqtt`, {
+  username: process.env.VITE_MQTT_USER,
+  password: process.env.VITE_MQTT_PASS,
+  protocol: 'wss'
+});
+
+mqttClient.on('connect', () => {
+  console.log('Backend connected to MQTT Broker (HiveMQ Cloud)');
 });
 
 // object used to track room states: players, boards, turns, hits, and chat history
@@ -136,6 +150,9 @@ io.on('connection', (socket) => {
 
       io.to(roomId).emit('receive_message', joinMessage);
 
+      // publish global notification about player joining a specific room
+      mqttClient.publish('battleship/global/news', `Player ${username} entered Room ${roomId}! ⚓`); //
+
     } else {
       // reconnect: update socket ID for existing player
       existingPlayer.id = socket.id; 
@@ -177,6 +194,9 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('game_start', {
         turn: room.turn
       });
+
+      // global broadcast that a real battle has begun
+      mqttClient.publish('battleship/global/news', `BATTLE START! ${room.players[0].username} vs ${room.players[1].username} in Room ${roomId}! ⚔️`);
     } else {
       // only one player ready - notify opponent
       socket.to(roomId).emit('opponent_ready', { username: player?.username });
@@ -215,6 +235,9 @@ io.on('connection', (socket) => {
       if (isSunk) {
         sunkShipName = shipName;
         console.log(`Room ${roomId}: ${shooter.username} sunk the enemy's ${sunkShipName}!`);
+        
+        // notify the global lobby about the tactical achievement
+        mqttClient.publish('battleship/global/news', `BOOM! ${shooter.username} sunk a ${sunkShipName} in Room ${roomId}! 💥`); //
       }
     }
 
@@ -237,6 +260,9 @@ io.on('connection', (socket) => {
 
     if (isGameOver) {
       console.log(`Room ${roomId}: Game Over. Winner: ${shooter.username}`);
+      
+      // victory announcement for everyone in the global lobby
+      mqttClient.publish('battleship/global/news', `VICTORY! ${shooter.username} destroyed the enemy fleet in Room ${roomId}! 🏆`); //
     }
   });
 
