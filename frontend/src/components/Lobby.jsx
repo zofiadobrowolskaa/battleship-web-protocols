@@ -5,6 +5,8 @@ import toast from 'react-hot-toast';
 import Chat from './Chat';
 import GameBoard from './GameBoard';
 import BattleField from './BattleField';
+import mqttClient from '../api/mqtt';
+import GlobalChat from './GlobalChat'
 
 const Lobby = () => {
   // extract roomId from URL parameters and initialize navigation hook
@@ -23,6 +25,8 @@ const Lobby = () => {
   const [gameStarted, setGameStarted] = useState(false);
   const [turn, setTurn] = useState(null);
   const [winner, setWinner] = useState(null);
+  const [globalNews, setGlobalNews] = useState([]);
+  const [serverStatus, setServerStatus] = useState({ onlinePlayers: 0, activeRooms: 0 });
 
   // join selected game room by updating the URL path
   const joinRoom = () => {
@@ -77,8 +81,6 @@ const Lobby = () => {
       const currentUsername = sessionStorage.getItem('username') || username;
       setUsername(currentUsername);
 
-      // connect to WebSocket only when joining a room
-      socket.connect();
       // notify server that user wants to join a room
       socket.emit("join_room", { roomId: urlRoomId, username: currentUsername });
       
@@ -163,21 +165,110 @@ const Lobby = () => {
     }
   }, [urlRoomId]);
 
+  // effect responsible for handling global MQTT feeds used in the lobby: Live Battle Feed, Live System Status
+  useEffect(() => {
+
+    // handles incoming MQTT messages and routes them by topic
+    const handleMqttMessage = (topic, message) => {
+      // live server telemetry (online players, active rooms, uptime)
+      if (topic === 'battleship/status/dashboard') {
+        try {
+          const status = JSON.parse(message.toString());
+          setServerStatus(status);
+        } catch (e) {
+          console.error("Error parsing dashboard data", e);
+        }
+        return;
+      }
+
+      // global battle notifications displayed in the lobby feed
+      if (topic === 'battleship/global/news') {
+        const newsText = message.toString();
+        const messageId = Date.now(); // unique ID for each message
+
+        setGlobalNews(prev => {
+          // prevent duplicate identical messages from being added simultaneously
+          if (prev.length > 0 && prev[0].text === newsText) return prev;
+          return [{ id: messageId, text: newsText }, ...prev].slice(0, 5);
+        });
+
+        // auto-remove this specific message from the feed after 7 seconds
+        setTimeout(() => {
+          setGlobalNews(prev => prev.filter(msg => msg.id !== messageId));
+        }, 7000);
+      }
+    };
+
+    // subscribe immediately if MQTT client is already connected
+    if (mqttClient.connected) {
+      mqttClient.subscribe('battleship/global/news');
+      mqttClient.subscribe('battleship/status/dashboard');
+    }
+
+    // subscribe again on (re)connect to handle refreshes / reconnects
+    const handleConnect = () => {
+      mqttClient.subscribe('battleship/global/news');
+      mqttClient.subscribe('battleship/status/dashboard');
+    };
+
+    mqttClient.on('connect', handleConnect);
+    mqttClient.on('message', handleMqttMessage);
+
+    // cleanup MQTT subscriptions and listeners on component unmount
+    return () => {
+      mqttClient.unsubscribe('battleship/global/news');
+      mqttClient.unsubscribe('battleship/status/dashboard');
+      mqttClient.off('connect', handleConnect);
+      mqttClient.off('message', handleMqttMessage);
+    };
+  }, []);
+
+
   return (
     <div className="lobby-wrapper">
+      {!isJoined && <GlobalChat username={username} />}
+
+      {!isJoined && (
+        <div className="floating-server-status" style={{ bottom: isJoined ? '80px' : '20px' }}>
+        <div className="status-indicator">
+          <span className="dot"></span>
+          Live System Status
+        </div>
+        <div className="stats">
+          Online Players: <strong>{serverStatus.onlinePlayers}</strong>
+        </div>
+        <div className="stats">
+          Active Rooms: <strong>{serverStatus.activeRooms}</strong>
+        </div>
+      </div>
+      )}
+      
       {/* room join screen */}
       {!isJoined && (
-        <div className="auth-container">
-          <h2>Game Lobby</h2>
-          <input 
-            type="text" 
-            placeholder="Room ID (e.g. 123)" 
-            value={roomId}
-            onChange={(e) => setRoomId(e.target.value)} 
-            onKeyDown={(e) => e.key === "Enter" && joinRoom()}
-          />
-          <button onClick={joinRoom}>Join Match</button>
-        </div>
+        <>
+          <div className="auth-container">
+            <h2>Game Lobby</h2>
+            <input 
+              type="text" 
+              placeholder="Room ID (e.g. 123)" 
+              value={roomId}
+              onChange={(e) => setRoomId(e.target.value)} 
+              onKeyDown={(e) => e.key === "Enter" && joinRoom()}
+            />
+            <button onClick={joinRoom}>Join Match</button>
+          </div>
+
+          {/* MQTT News Feed - displaying auto-dismissing news bubbles */}
+          <div className="global-news-feed">
+            <h4>Live Battle Feed</h4>
+            {globalNews.map((news) => (
+              <div key={news.id} className="news-item">
+                <span className="icon">📢</span>
+                <span>{news.text}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* ship placement phase */}
