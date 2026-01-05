@@ -52,6 +52,27 @@ mqttClient.on('connect', () => {
   console.log('Backend connected to MQTT Broker (HiveMQ Cloud)');
 });
 
+// function periodically broadcasts live server telemetry (for lobby dashboard)
+// data is consumed by MQTT clients to display real-time system status
+const broadcastServerStatus = () => {
+  const status = {
+    // number of currently connected Socket.IO clients
+    onlinePlayers: io.engine.clientsCount,
+    activeRooms: Object.keys(rooms).length,
+    // server uptime in seconds (used for monitoring / diagnostics)
+    uptime: Math.floor(process.uptime())
+  };
+
+  // publish server telemetry to MQTT for live lobby dashboard
+  mqttClient.publish(
+    'battleship/status/dashboard',
+    JSON.stringify(status)
+  );
+};
+
+// send server status update every 5 seconds
+setInterval(broadcastServerStatus, 5000);
+
 // object used to track room states: players, boards, turns, hits, and chat history
 const rooms = {};
 

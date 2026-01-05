@@ -26,6 +26,7 @@ const Lobby = () => {
   const [turn, setTurn] = useState(null);
   const [winner, setWinner] = useState(null);
   const [globalNews, setGlobalNews] = useState([]);
+  const [serverStatus, setServerStatus] = useState({ onlinePlayers: 0, activeRooms: 0 });
 
   // join selected game room by updating the URL path
   const joinRoom = () => {
@@ -80,8 +81,6 @@ const Lobby = () => {
       const currentUsername = sessionStorage.getItem('username') || username;
       setUsername(currentUsername);
 
-      // connect to WebSocket only when joining a room
-      socket.connect();
       // notify server that user wants to join a room
       socket.emit("join_room", { roomId: urlRoomId, username: currentUsername });
       
@@ -166,15 +165,27 @@ const Lobby = () => {
     }
   }, [urlRoomId]);
 
-  // effect: handles global MQTT news feed with auto-dismiss functionality
+  // effect responsible for handling global MQTT feeds used in the lobby: Live Battle Feed, Live System Status
   useEffect(() => {
-    // defined separately to allow clean removal of the listener
+
+    // handles incoming MQTT messages and routes them by topic
     const handleMqttMessage = (topic, message) => {
+      // live server telemetry (online players, active rooms, uptime)
+      if (topic === 'battleship/status/dashboard') {
+        try {
+          const status = JSON.parse(message.toString());
+          setServerStatus(status);
+        } catch (e) {
+          console.error("Error parsing dashboard data", e);
+        }
+        return;
+      }
+
+      // global battle notifications displayed in the lobby feed
       if (topic === 'battleship/global/news') {
         const newsText = message.toString();
         const messageId = Date.now(); // unique ID for each message
 
-        // using functional update to maintain correct state and add unique message objects
         setGlobalNews(prev => {
           // prevent duplicate identical messages from being added simultaneously
           if (prev.length > 0 && prev[0].text === newsText) return prev;
@@ -186,28 +197,51 @@ const Lobby = () => {
           setGlobalNews(prev => prev.filter(msg => msg.id !== messageId));
         }, 7000);
       }
-      
     };
 
-    // subscribe to the global news topic upon connection
-    mqttClient.on('connect', () => {
+    // subscribe immediately if MQTT client is already connected
+    if (mqttClient.connected) {
       mqttClient.subscribe('battleship/global/news');
-    });
+      mqttClient.subscribe('battleship/status/dashboard');
+    }
 
-    // avoid duplicate listeners by removing old one before adding new one
-    mqttClient.removeListener('message', handleMqttMessage);
+    // subscribe again on (re)connect to handle refreshes / reconnects
+    const handleConnect = () => {
+      mqttClient.subscribe('battleship/global/news');
+      mqttClient.subscribe('battleship/status/dashboard');
+    };
+
+    mqttClient.on('connect', handleConnect);
     mqttClient.on('message', handleMqttMessage);
 
     // cleanup MQTT subscriptions and listeners on component unmount
     return () => {
       mqttClient.unsubscribe('battleship/global/news');
-      mqttClient.removeListener('message', handleMqttMessage);
+      mqttClient.unsubscribe('battleship/status/dashboard');
+      mqttClient.off('connect', handleConnect);
+      mqttClient.off('message', handleMqttMessage);
     };
   }, []);
+
 
   return (
     <div className="lobby-wrapper">
       {!isJoined && <GlobalChat username={username} />}
+
+      {!isJoined && (
+        <div className="floating-server-status" style={{ bottom: isJoined ? '80px' : '20px' }}>
+        <div className="status-indicator">
+          <span className="dot"></span>
+          Live System Status
+        </div>
+        <div className="stats">
+          Online Players: <strong>{serverStatus.onlinePlayers}</strong>
+        </div>
+        <div className="stats">
+          Active Rooms: <strong>{serverStatus.activeRooms}</strong>
+        </div>
+      </div>
+      )}
       
       {/* room join screen */}
       {!isJoined && (
