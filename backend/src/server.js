@@ -25,6 +25,7 @@ const mqtt = require('mqtt'); //
 require('dotenv').config();
 
 const initDb = require('./models/initDb');
+const GameModel = require('./models/gameModel');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 
@@ -200,6 +201,12 @@ io.on('connection', (socket) => {
     const room = rooms[roomId];
     if (!room) return;
 
+    // if a new game is starting in an existing room object, reset its over status
+    if (room.isGameOver) {
+        room.isGameOver = false;
+        room.turn = null;
+    }
+
     // assign board and reset hit counter for this player using socket.id
     const player = room.players.find(p => p.id === socket.id);
     if (player) {
@@ -282,9 +289,12 @@ io.on('connection', (socket) => {
     });
 
     if (isGameOver) {
-      room.isGameOver = true; // Set flag to block forfeit logic in disconnect
+      room.isGameOver = true; // set flag to block forfeit logic in disconnect
       console.log(`Room ${roomId}: Game Over. Winner: ${shooter.username}`);
-      console.log(`Room ${roomId}: ${victim.username} lost the battle.`); // Additional log for the loser
+      console.log(`Room ${roomId}: ${victim.username} lost the battle.`); // additional log for the loser
+
+      // save game history to database (normal win)
+      GameModel.recordGame(shooter.username, victim.username, 'destruction');
 
       // victory announcement for everyone in the global lobby
       mqttClient.publish('battleship/global/news', `VICTORY! ${shooter.username} destroyed the enemy fleet in Room ${roomId}! 🏆`);
@@ -326,6 +336,9 @@ io.on('connection', (socket) => {
           if (winnerPlayer) {
             console.log(`Room ${roomId}: ${leavingPlayer.username} left during battle. Winner by forfeit: ${winnerPlayer.username}`);
             
+            // save game history to database (forfeit)
+            GameModel.recordGame(winnerPlayer.username, leavingPlayer.username, 'forfeit');
+
             // notify the remaining player about the victory due to opponent's disconnection
             io.to(roomId).emit('update_game', {
               gameOver: winnerPlayer.username,

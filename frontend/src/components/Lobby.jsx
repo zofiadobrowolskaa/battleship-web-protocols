@@ -65,6 +65,7 @@ const Lobby = () => {
     setGameStarted(false);
     setWinner(null);
     setTurn(null);
+    setLastShot(null)
     navigate('/lobby');
   };
 
