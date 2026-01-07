@@ -56,8 +56,8 @@ mqttClient.on('connect', () => {
 // data is consumed by MQTT clients to display real-time system status
 const broadcastServerStatus = () => {
   const status = {
-    // number of currently connected Socket.IO clients
-    onlinePlayers: io.engine.clientsCount,
+    // count of unique authenticated users (based on stored username in socket)
+    onlinePlayers: Array.from(io.sockets.sockets.values()).filter(s => s.username).length,
     activeRooms: Object.keys(rooms).length,
     // server uptime in seconds (used for monitoring / diagnostics)
     uptime: Math.floor(process.uptime())
@@ -117,13 +117,15 @@ io.on('connection', (socket) => {
   // player joins a game room, stores player info in the room state
   socket.on('join_room', (data) => {
     const { roomId, username } = data;
+    socket.username = username; // internal reference for telemetry
 
-    // create room if it doesn't exist, including chat history
+    // create room if it doesn't exist, including chat history and game status
     if (!rooms[roomId]) {
       rooms[roomId] = { 
         players: [], 
         turn: null, 
-        chatHistory: [] // stores previous messages for new joiners
+        chatHistory: [], // stores previous messages for new joiners
+        isGameOver: false // status flag to prevent forfeit logic after natural win
       };
     }
 
@@ -172,7 +174,7 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('receive_message', joinMessage);
 
       // publish global notification about player joining a specific room
-      mqttClient.publish('battleship/global/news', `Player ${username} entered Room ${roomId}! ⚓`); //
+      mqttClient.publish('battleship/global/news', `Player ${username} entered Room ${roomId}! ⚓`);
 
     } else {
       // reconnect: update socket ID for existing player
@@ -228,7 +230,7 @@ io.on('connection', (socket) => {
   socket.on('fire', (data) => {
     const { roomId, r, c } = data;
     const room = rooms[roomId];
-    if (!room) return;
+    if (!room || room.isGameOver) return; // Prevent fire if game is already over
 
     const shooter = room.players.find(p => p.id === socket.id);
     const victim = room.players.find(p => p.id !== socket.id);
@@ -258,7 +260,7 @@ io.on('connection', (socket) => {
         console.log(`Room ${roomId}: ${shooter.username} sunk the enemy's ${sunkShipName}!`);
         
         // notify the global lobby about the tactical achievement
-        mqttClient.publish('battleship/global/news', `BOOM! ${shooter.username} sunk a ${sunkShipName} in Room ${roomId}! 💥`); //
+        mqttClient.publish('battleship/global/news', `BOOM! ${shooter.username} sunk a ${sunkShipName} in Room ${roomId}! 💥`);
       }
     }
 
@@ -280,10 +282,12 @@ io.on('connection', (socket) => {
     });
 
     if (isGameOver) {
+      room.isGameOver = true; // Set flag to block forfeit logic in disconnect
       console.log(`Room ${roomId}: Game Over. Winner: ${shooter.username}`);
-      
+      console.log(`Room ${roomId}: ${victim.username} lost the battle.`); // Additional log for the loser
+
       // victory announcement for everyone in the global lobby
-      mqttClient.publish('battleship/global/news', `VICTORY! ${shooter.username} destroyed the enemy fleet in Room ${roomId}! 🏆`); //
+      mqttClient.publish('battleship/global/news', `VICTORY! ${shooter.username} destroyed the enemy fleet in Room ${roomId}! 🏆`);
     }
   });
 
@@ -315,9 +319,8 @@ io.on('connection', (socket) => {
       if (playerIndex !== -1) {
         const leavingPlayer = room.players[playerIndex];
         
-        // forfeit logic: if a game was in progress (room.turn is set) and there were 2 players,
-        // the remaining player is declared the winner by forfeit.
-        if (room.players.length === 2 && room.turn !== null) {
+        // ONLY execute forfeit logic if the game was actually in progress and NOT already over
+        if (room.players.length === 2 && room.turn !== null && !room.isGameOver) {
           const winnerPlayer = room.players.find(p => p.id !== socket.id);
           
           if (winnerPlayer) {
@@ -345,6 +348,7 @@ io.on('connection', (socket) => {
         // remove the disconnected player from the room state
         room.players.splice(playerIndex, 1);
 
+        // delete room if empty
         if (room.players.length === 0) delete rooms[roomId];
       }
     }

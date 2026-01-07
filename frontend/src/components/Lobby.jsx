@@ -27,6 +27,7 @@ const Lobby = () => {
   const [winner, setWinner] = useState(null);
   const [globalNews, setGlobalNews] = useState([]);
   const [serverStatus, setServerStatus] = useState({ onlinePlayers: 0, activeRooms: 0 });
+  const [lastShot, setLastShot] = useState(null);
 
   // join selected game room by updating the URL path
   const joinRoom = () => {
@@ -119,6 +120,9 @@ const Lobby = () => {
       
       // update whose turn it is
       if (nextTurn) setTurn(nextTurn);
+
+      // sync shot data to update BattleField visual state
+      setLastShot(data);
 
       // listen for game over event
       if (gameOver) {
@@ -298,7 +302,8 @@ const Lobby = () => {
                   currentTurn={turn}
                   setTurn={setTurn} 
                   winner={winner}
-                  setWinner={setWinner} 
+                  setWinner={setWinner}
+                  lastShot={lastShot} 
               />
             </div>
         </div>
