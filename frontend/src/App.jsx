@@ -6,24 +6,31 @@ import Register from './components/Register';
 import Lobby from './components/Lobby';
 import Home from './components/Home';
 import ProtectedRoute from './components/ProtectedRoute';
+import API from './api/axios';
 
 function App() {
-  // check if token exists in session storage to initialize authentication state
-  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('token'));
+  // verify authentication by checking if username exists in session storage
+  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('username'));
   const navigate = useNavigate();
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = (e) => {
-    e.preventDefault();
-    // remove authentication credentials from session storage
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('username'); 
+  const handleLogout = async (e) => {
+    if (e) e.preventDefault();
     
-    setIsAuthenticated(false);
-    navigate('/');
+    try {
+      // inform the backend to clear the Http-Only cookie
+      await API.post('/auth/logout');
+    } catch (err) {
+      console.error("Logout request failed", err);
+    } finally {
+      // always clear local state even if server request fails
+      sessionStorage.removeItem('username'); 
+      setIsAuthenticated(false);
+      navigate('/');
+    }
   };
 
   return (

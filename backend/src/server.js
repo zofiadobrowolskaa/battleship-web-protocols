@@ -24,6 +24,9 @@ const mqtt = require('mqtt'); //
 // loads environment variables from .env file into process.env
 require('dotenv').config();
 
+// middleware to parse cookies from request headers
+const cookieParser = require('cookie-parser');
+
 const initDb = require('./models/initDb');
 const GameModel = require('./models/gameModel');
 const authRoutes = require('./routes/authRoutes');
@@ -80,10 +83,18 @@ const rooms = {};
 // database initialization
 initDb();
 
+// enable cors with credentials for specific frontend origin
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,  // allow browser to send and receive cookies
+  methods: ["GET", "POST", "PUT", "DELETE"]
+}));
+
+
 app.use(helmet());
-app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(cookieParser());
 
 // routes
 app.use('/api/auth', authRoutes);

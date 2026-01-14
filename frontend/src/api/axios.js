@@ -3,18 +3,11 @@ import axios from 'axios';
 // create a reusable axios instance for api requests
 const API = axios.create({
   baseURL: 'http://localhost:5000/api',
+  withCredentials: true // required to send/receive cookies with every request
 });
 
-// automatically attach jwt token to every request if it exists
+// Http-Only cookie will be automatically attached to the request headers
 API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-
-  // if token exists, add it to Authorization header
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  // return modified config
   return config;
 });
 

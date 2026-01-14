@@ -26,8 +26,6 @@ const Login = ({ onLoginSuccess }) => {
         // send POST request to login endpoint with form values
         const res = await API.post('/auth/login', values);
 
-        // store JWT token and username in sessionStorage
-        sessionStorage.setItem('token', res.data.token);
         sessionStorage.setItem('username', res.data.user.username);
 
         toast.success('Logged in successfully 🚀');

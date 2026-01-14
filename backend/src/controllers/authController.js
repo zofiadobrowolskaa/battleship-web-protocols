@@ -91,10 +91,17 @@ const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // respond with token and user info (excluding password)
+    // secure the token from being accessed by malicious JavaScript (XSS protection)
+    res.cookie('token', token, {
+      httpOnly: true, // prevents client-side scripts from accessing the cookie
+      secure: process.env.NODE_ENV === 'production', // ensures cookie is sent only over HTTPS in production
+      sameSite: 'strict', // protects against CSRF attacks
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    // respond with user info (token isin the cookie header)
     res.json({
       message: 'Login successful',
-      token,
       user: { id: user.id, username: user.username, email: user.email }
     });
   } catch (err) {
@@ -103,4 +110,23 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { register, login };
+
+// controller for logging out a user
+const logout = async (req, res) => {
+  try {
+
+    // delete the cookie by setting its expiration to the past
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
+    });
+
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error during logout' });
+  }
+};
+
+module.exports = { register, login, logout };
