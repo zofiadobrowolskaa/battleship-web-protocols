@@ -28,6 +28,23 @@ const Lobby = () => {
   const [globalNews, setGlobalNews] = useState([]);
   const [serverStatus, setServerStatus] = useState({ onlinePlayers: 0, activeRooms: 0 });
   const [lastShot, setLastShot] = useState(null);
+  const [showStats, setShowStats] = useState(false);
+  const [myStats, setMyStats] = useState(null);
+
+  // calls backend API to get persistent game history summary
+  const fetchMyStats = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/users/stats/${username}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setMyStats(data);
+      setShowStats(true);
+    } catch (err) {
+      toast.error("Could not load statistics");
+    }
+  };
 
   // join selected game room by updating the URL path
   const joinRoom = () => {
@@ -234,10 +251,10 @@ const Lobby = () => {
       {!isJoined && <GlobalChat username={username} />}
 
       {!isJoined && (
-        <div className="floating-server-status" style={{ bottom: isJoined ? '80px' : '20px' }}>
+        <div className="floating-server-status" onClick={fetchMyStats} title="Click to view your stats">
         <div className="status-indicator">
           <span className="dot"></span>
-          Live System Status
+          Battle Command Center
         </div>
         <div className="stats">
           Online Players: <strong>{serverStatus.onlinePlayers}</strong>
@@ -246,6 +263,29 @@ const Lobby = () => {
           Active Rooms: <strong>{serverStatus.activeRooms}</strong>
         </div>
       </div>
+      )}
+
+      {showStats && myStats && (
+        <div className="stats-modal-overlay" onClick={() => setShowStats(false)}>
+          <div className="stats-modal" onClick={e => e.stopPropagation()}>
+            <button className="close-modal" onClick={() => setShowStats(false)}>✖</button>
+            <h3>Commander Profile: {username}</h3>
+            <div className="stats-grid">
+              <div className="stat-card win">
+                <span className="val">{myStats.wins}</span>
+                <span className="lbl">Victories</span>
+              </div>
+              <div className="stat-card loss">
+                <span className="val">{myStats.losses}</span>
+                <span className="lbl">Defeats</span>
+              </div>
+              <div className="stat-card total">
+                <span className="val">{myStats.total_games}</span>
+                <span className="lbl">Total Battles</span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       
       {/* room join screen */}
@@ -262,6 +302,10 @@ const Lobby = () => {
             />
             <button onClick={joinRoom}>Join Match</button>
           </div>
+
+          <button className="mid-stats-button" onClick={fetchMyStats}>
+            View My Stats 📊
+          </button>
 
           {/* MQTT News Feed - displaying auto-dismissing news bubbles */}
           <div className="global-news-feed">
