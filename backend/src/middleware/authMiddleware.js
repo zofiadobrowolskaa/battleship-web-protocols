@@ -4,11 +4,11 @@ const jwt = require('jsonwebtoken');
 const protect = (req, res, next) => {
   let token;
 
-  // check if token exists in the Authorization header (Authorization: Bearer <token>)
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  // check if token exists in the cookies
+  if (req.cookies && req.cookies.token) {
     try {
-      // extract token from header
-      token = req.headers.authorization.split(' ')[1];
+      // extract token from cookie object
+      token = req.cookies.token;
 
       // verify token using JWT secret
       const decoded = jwt.verify(token, process.env.JWT_SECRET);

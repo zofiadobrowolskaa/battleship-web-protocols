@@ -9,6 +9,14 @@ const initDb = async () => {
       password VARCHAR(250) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS games_history (
+      id SERIAL PRIMARY KEY,
+      winner_username VARCHAR(50) NOT NULL,
+      loser_username VARCHAR(50) NOT NULL,
+      finish_reason VARCHAR(20) NOT NULL, -- 'destruction' or 'forfeit'
+      played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `;
 
   try {
