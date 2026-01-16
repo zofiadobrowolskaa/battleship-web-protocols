@@ -10,6 +10,7 @@ A high-performance, real-time Battleship game featuring multi-protocol communica
 * **Security** - JSON Web Tokens, Bcrypt, Helmet, Cookie-parser
 
 **Core Features:**
+
 **1. Real-Time Communication**
 * **WebSockets (Socket.IO):** Powers the core gameplay loop, including shot synchronization, turn management, and instant in-game messaging.
 
