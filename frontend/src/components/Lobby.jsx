@@ -34,10 +34,19 @@ const Lobby = () => {
   // calls backend API to get persistent game history summary
   const fetchMyStats = async () => {
     try {
-      const token = sessionStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/api/users/stats/${username}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+
+      if (response.status === 401) {
+        toast.error("Session expired. Please log in again.");
+        return;
+      }
+
       const data = await response.json();
       setMyStats(data);
       setShowStats(true);
