@@ -194,12 +194,16 @@
   font-weight: 600;
   color: #3498db;
   cursor: pointer;
-  margin: 10px 0;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  
+  margin: 5px 0;
   width: 100%;
   max-width: 450px;
-  margin-top: 30px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+
+  &:first-of-type {
+    margin-top: 20px; 
+  }
 
   &:hover {
     background: #f8fbff;

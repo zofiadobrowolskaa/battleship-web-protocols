@@ -316,6 +316,13 @@ const Lobby = () => {
             View My Stats 📊
           </button>
 
+          <button 
+            className="mid-stats-button secondary" 
+            onClick={() => navigate('/search-commanders')}
+          >
+            Commander Search 🔍
+          </button>
+
           {/* MQTT News Feed - displaying auto-dismissing news bubbles */}
           <div className="global-news-feed">
             <h4>Live Battle Feed</h4>

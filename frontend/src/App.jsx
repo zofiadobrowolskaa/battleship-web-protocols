@@ -7,6 +7,7 @@ import Lobby from './components/Lobby';
 import Home from './components/Home';
 import ProtectedRoute from './components/ProtectedRoute';
 import API from './api/axios';
+import CommanderSearch from './components/CommanderSearch';
 
 function App() {
   // verify authentication by checking if username exists in session storage
@@ -75,6 +76,7 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route path="/search-commanders" element={<CommanderSearch />} />
       </Routes>
 
       <Toaster position="top-right" />
