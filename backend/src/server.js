@@ -27,6 +27,12 @@ require('dotenv').config();
 // middleware to parse cookies from request headers
 const cookieParser = require('cookie-parser');
 
+// Node.js built-in module for file system operations (used for logging to file)
+const fs = require('fs');
+
+// Node.js built-in module for handling and transforming file paths
+const path = require('path');
+
 const initDb = require('./models/initDb');
 const GameModel = require('./models/gameModel');
 const authRoutes = require('./routes/authRoutes');
@@ -36,6 +42,9 @@ const app = express();
 
 // create HTTP server based on Express app
 const server = http.createServer(app);
+
+// create a write stream (in append mode) to a file named 'access.log' in the current directory
+const accessLogStream = fs.createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' });
 
 // initialize Socket.IO server between backend and frontend
 const io = new Server(server, {
@@ -93,6 +102,8 @@ app.use(cors({
 
 app.use(helmet());
 app.use(morgan('dev'));
+// log all requests to 'access.log' file in professional 'combined' format
+app.use(morgan('combined', { stream: accessLogStream }));
 app.use(express.json());
 app.use(cookieParser());
 
