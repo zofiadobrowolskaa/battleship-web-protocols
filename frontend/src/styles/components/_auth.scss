@@ -10,13 +10,32 @@
   display: flex;
   flex-direction: column;
 
-  h2 { text-align: center; margin-bottom: 25px; }
+  @media (max-width: 768px) {
+    width: 90%;
+    margin: 40px auto;
+    padding: 25px;
+  }
+
+  h2 { 
+    text-align: center; 
+    margin-bottom: 25px;
+
+    @media (max-width: 768px) {
+      font-size: 1.4rem;
+    }
+  }
 
   input {
     margin-bottom: 16px;
     padding: 12px;
     border-radius: 8px;
     border: 1px solid #cfd9e3;
+    font-size: 1rem;
+
+    @media (max-width: 768px) {
+      padding: 10px;
+    }
+
     &:focus { outline: none; border-color: #0077cc; }
   }
 
@@ -30,6 +49,11 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
+
+    @media (max-width: 768px) {
+      padding: 14px;
+    }
+
     &:hover { 
       transform: translateY(-1px); 
       box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); 

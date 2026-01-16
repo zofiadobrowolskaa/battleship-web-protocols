@@ -2,9 +2,19 @@
   display: flex;
   flex-direction: column;
 
+  @media (max-width: 768px) {
+    width: 95%;
+    padding: 20px;
+  }
+
   .back-button {
     align-self: flex-start;
     padding: 5px 10px;
+
+    @media (max-width: 768px) {
+      font-size: 0.9rem;
+      padding: 8px 12px;
+    }
   }
 
   .search-input-group {
@@ -12,44 +22,64 @@
     display: flex;
     width: 100%;
 
-     input,
+    @media (max-width: 480px) {
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    input,
     .search-button {
-        height: 48px;
-        box-sizing: border-box;
+      height: 48px;
+      box-sizing: border-box;
+
+      @media (max-width: 768px) {
+        height: 42px;
+      }
     }
 
     input {
-        flex: 1;
-        padding: 12px;
-        border: 1px solid #ccc;
-        border-right: none;
-        border-radius: 8px 0 0 8px;
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-right: none;
+      border-radius: 8px 0 0 8px;
 
-        &:focus {
+      @media (max-width: 480px) {
+        border-right: 1px solid #ccc;
+        border-radius: 8px;
+        width: 100%;
+      }
+
+      &:focus {
         border-color: #0077cc;
-        }
+      }
     }
 
     .search-button {
-        padding: 0px 20px;
-        background-color: #0077cc;
-        color: white;
-        border: 1px solid #0077cc;
-        border-radius: 0 8px 8px 0;
-        cursor: pointer;
-        font-weight: 600;
-        margin-top: 0px;
-        transition: background-color 0.2s;
+      padding: 0px 20px;
+      background-color: #0077cc;
+      color: white;
+      border: 1px solid #0077cc;
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 0px;
+      transition: background-color 0.2s;
 
-        &:hover {
+      @media (max-width: 480px) {
+        border-radius: 8px;
+        width: 100%;
+      }
+
+      &:hover {
         background-color: #0056b3;
-        }
+      }
 
-        &:active {
+      &:active {
         background-color: #004085;
-        }
+      }
     }
-    }
+  }
 
   .search-results-container {
     margin-top: 20px;
@@ -64,6 +94,10 @@
       justify-content: space-between;
       align-items: center;
 
+      @media (max-width: 768px) {
+        padding: 12px 5px;
+      }
+
       &:last-child {
         border-bottom: none;
       }
@@ -76,6 +110,10 @@
         display: flex;
         font-size: 0.8em;
         color: #888;
+
+        @media (max-width: 768px) {
+          font-size: 0.75em;
+        }
 
         &:hover {
           text-decoration: underline;

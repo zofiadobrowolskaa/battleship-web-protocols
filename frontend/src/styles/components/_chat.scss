@@ -7,6 +7,11 @@
   flex-direction: column;
   align-items: flex-end;
 
+  @media (max-width: 768px) {
+    bottom: 15px;
+    right: 15px;
+  }
+
   .chat-toggle-btn {
     position: relative;
     width: 60px;
@@ -19,6 +24,12 @@
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s;
+
+    @media (max-width: 768px) {
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+    }
 
     &:hover { transform: scale(1.1); }
 
@@ -59,6 +70,15 @@
     overflow: hidden;
     animation: slideIn 0.3s ease-out;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+
+    @media (max-width: 768px) {
+      width: 280px;
+      height: 350px;
+    }
+
+    @media (max-height: 500px) {
+      height: 250px;
+    }
 
     @keyframes slideIn {
       from { opacity: 0; transform: translateY(20px); }
@@ -159,6 +179,10 @@
   left: auto;
   right: 20px;
   align-items: flex-start;
+
+  @media (max-width: 768px) {
+    right: 15px;
+  }
 
   .global-btn {
     background-color: #2ecc71;
