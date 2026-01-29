@@ -37,9 +37,9 @@ A high-performance, real-time Battleship game featuring multi-protocol communica
 
  **Project Structure**
 
-* **/backend**: Node.js server handling game logic, database interactions, and MQTT broadcasts.
+* **backend**: Node.js server handling game logic, database interactions, and MQTT broadcasts.
 
-* **/frontend**: React application with tactical interface and ship placement mechanics.
+* **frontend**: React application with tactical interface and ship placement mechanics.
 
  **Installation & Setup**
 
