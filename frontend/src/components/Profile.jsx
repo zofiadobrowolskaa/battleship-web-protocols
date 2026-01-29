@@ -38,18 +38,6 @@ const Profile = ({ onLogout }) => {
       .catch(() => toast.error('Failed to load profile'));
   }, []);
 
-  const handleDeleteAccount = async () => {
-    if (window.confirm("Are you sure you want to delete your account? This action is irreversible.")) {
-      try {
-        await API.delete('/users/profile');
-        toast.success('Account deleted');
-        onLogout();
-      } catch (err) {
-        toast.error('Deletion failed');
-      }
-    }
-  };
-
   if (loading) return <div>Loading...</div>;
 
   return (
