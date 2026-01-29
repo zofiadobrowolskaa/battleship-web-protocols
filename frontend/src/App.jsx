@@ -6,6 +6,7 @@ import Register from './components/Register';
 import Lobby from './components/Lobby';
 import Home from './components/Home';
 import ProtectedRoute from './components/ProtectedRoute';
+import Profile from './components/Profile';
 import API from './api/axios';
 import CommanderSearch from './components/CommanderSearch';
 
@@ -30,7 +31,7 @@ function App() {
       // always clear local state even if server request fails
       sessionStorage.removeItem('username'); 
       setIsAuthenticated(false);
-      navigate('/');
+      navigate('/', { replace: true });
     }
   };
 
@@ -48,6 +49,7 @@ function App() {
             </>
           ) : (
             <>
+              <Link to="/profile">Profile</Link>
               <Link to="/lobby">Lobby</Link>
               <a href="/" onClick={handleLogout} className="logout-link">
                 Logout
@@ -77,6 +79,13 @@ function App() {
           } 
         />
         <Route path="/search-commanders" element={<CommanderSearch />} />
+        <Route path="/profile" 
+          element={
+            <ProtectedRoute>
+              <Profile onLogout={handleLogout} />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
 
       <Toaster position="top-right" />
