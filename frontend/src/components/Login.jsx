@@ -35,7 +35,7 @@ const Login = ({ onLoginSuccess }) => {
 
         // redirect to the original destination or home page
         const from = location.state?.from?.pathname || '/';
-        navigate(from, { replace: true });
+        navigate(from === '/profile' ? '/' : from, { replace: true });
 
       } catch (err) {
         toast.error(err.response?.data?.message || 'Login failed');

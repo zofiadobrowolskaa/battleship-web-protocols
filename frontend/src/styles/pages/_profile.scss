@@ -1,0 +1,72 @@
+.auth-container.profile-page {
+    form, .profile-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+
+    input {
+        width: 80%;
+    }
+
+    .update-btn, .delete-btn {
+        margin-top: 15px;
+        width: 70%;
+        padding: 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        border: none;
+        font-size: 1rem;
+        display: block; 
+    }
+
+    .update-btn {
+        background-color: #2ecc71 !important;
+        color: white;
+        &:hover { 
+            background-color: #27ae60 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+    }
+
+    .delete-btn {
+        background-color: #e63946 !important;
+        color: white;
+        &:hover { 
+            background-color: #c12e3a !important;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+    }
+
+    .confirm-group {
+        margin-top: 20px;
+        padding: 15px;
+        width: 80%;
+        border: 1px dashed #e63946;
+        border-radius: 8px;
+        text-align: center;
+
+        p { 
+            font-size: 0.9rem; 
+            margin-bottom: 10px; 
+            color: #e63946; 
+            font-weight: bold; 
+        }
+        
+        .confirm-btns {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+
+            button {
+                width: auto;
+                padding: 8px 16px;
+            }
+        }
+    }
+}
