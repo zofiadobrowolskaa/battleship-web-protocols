@@ -37,6 +37,8 @@ const initDb = require('./models/initDb');
 const GameModel = require('./models/gameModel');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const { protect } = require('./middleware/authMiddleware');
 
 const app = express();
 
@@ -110,6 +112,81 @@ app.use(cookieParser());
 // routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', protect, adminRoutes);
+
+// get list of active game rooms
+app.get('/api/rooms', protect, (req, res) => {
+  const roomList = Object.keys(rooms).map(roomId => ({
+    roomId,
+    playersCount: rooms[roomId].players.length,
+    isGameOver: rooms[roomId].isGameOver
+  }));
+  res.json(roomList);
+});
+
+// delete a specific game room by ID
+app.delete('/api/rooms/:roomId', protect, (req, res) => {
+  const { roomId } = req.params;
+  if (rooms[roomId]) {
+    io.to(roomId).emit('error_message', { message: 'Room closed by server admin.' });
+    
+    delete rooms[roomId];
+    res.json({ message: `Room ${roomId} deleted successfully.` });
+  } else {
+    res.status(404).json({ message: 'Room not found' });
+  }
+});
+
+// handle a player firing a shot via HTTP
+app.post('/api/game/shot', protect, (req, res) => {
+  const { roomId, username, r, c } = req.body;
+  const room = rooms[roomId];
+
+  if (!room) return res.status(404).json({ message: 'Room not found' });
+  if (room.isGameOver) return res.status(400).json({ message: 'Game is over' });
+  if (room.turn !== username) return res.status(400).json({ message: 'Not your turn' });
+
+  const shooter = room.players.find(p => p.username === username);
+  const victim = room.players.find(p => p.username !== username);
+
+  if (!shooter || !victim) return res.status(400).json({ message: 'Players error' });
+
+  console.log(`HTTP Shot in Room ${roomId}: ${username} fired at [R:${r}, C:${c}]`);
+
+  const shipName = victim.board[r][c];
+  const result = shipName !== null ? 'hit' : 'miss';
+  let sunkShipName = null;
+
+  if (result === 'hit') {
+    victim.hitsTaken += 1;
+    victim.board[r][c] = 'HIT_SEGMENT';
+
+    const isSunk = !victim.board.some(row => row.includes(shipName));
+    if (isSunk) {
+      sunkShipName = shipName;
+      mqttClient.publish('battleship/global/news', `BOOM! ${shooter.username} sunk a ${sunkShipName} via HTTP!`);
+    }
+  }
+
+  room.turn = victim.username;
+  const isGameOver = victim.hitsTaken === 17;
+
+  io.to(roomId).emit('update_game', {
+    r, c, result,
+    shooter: shooter.username,
+    nextTurn: room.turn,
+    sunkShip: sunkShipName,
+    gameOver: isGameOver ? shooter.username : null
+  });
+
+  if (isGameOver) {
+    room.isGameOver = true;
+    GameModel.recordGame(shooter.username, victim.username, 'destruction');
+  }
+
+  // respond to the HTTP request with the result of the shot
+  res.json({ result, sunkShip: sunkShipName, nextTurn: room.turn });
+});
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
