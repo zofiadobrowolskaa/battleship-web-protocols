@@ -7,6 +7,8 @@ const Chat = ({ roomId, username }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const chatBodyRef = useRef(null);
+  const [typingUser, setTypingUser] = useState(null);
+  const typingTimeoutRef = useRef(null);
 
   // auto-scroll to the bottom of the chat when new messages arrive or chat is opened
   useEffect(() => {
@@ -51,13 +53,26 @@ const Chat = ({ roomId, username }) => {
       setMessageList(history);
     };
 
+    const handleTyping = (data) => {
+      setTypingUser(data.username);
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+      typingTimeoutRef.current = setTimeout(() => {
+        setTypingUser(null);
+      }, 3000);
+    };
+
     socket.on("receive_message", handleMessage);
     socket.on("chat_history", handleHistory);
+    socket.on("display_typing", handleTyping);
 
     // remove listeners on component unmount
     return () => {
       socket.off("receive_message", handleMessage);
       socket.off("chat_history", handleHistory);
+      socket.off("display_typing", handleTyping);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [roomId, isOpen, username]);
 
@@ -96,12 +111,23 @@ const Chat = ({ roomId, username }) => {
             ))}
           </div>
 
+          {typingUser && (
+            <div className="typing-indicator">
+              <span className="dots">✎</span> {typingUser} is typing...
+            </div>
+          )}
+
           <div className="chat-footer">
             <input 
               type="text"
               value={message}
               placeholder="Type message..."
-              onChange={(e) => setMessage(e.target.value)}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                if (e.target.value.trim() !== "") {
+                  socket.emit("typing", { roomId, username });
+                }
+              }}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             />
             <button onClick={sendMessage}>Send</button>

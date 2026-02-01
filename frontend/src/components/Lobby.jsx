@@ -225,6 +225,20 @@ const Lobby = () => {
         return;
       }
 
+      if (topic === 'battleship/admin/alert') {
+        const msgText = message.toString();
+        toast.custom((t) => (
+          <div className="alert-toast">
+            <span className="alert-icon">🚨</span>
+            <div className="alert-content">
+              <h4>ALERT</h4>
+              <p>{msgText}</p>
+            </div>
+          </div>
+        ), { duration: 5000 });
+        return;
+      }
+
       // global battle notifications displayed in the lobby feed
       if (topic === 'battleship/global/news') {
         const newsText = message.toString();
@@ -247,12 +261,14 @@ const Lobby = () => {
     if (mqttClient.connected) {
       mqttClient.subscribe('battleship/global/news');
       mqttClient.subscribe('battleship/status/dashboard');
+      mqttClient.subscribe('battleship/admin/alert');
     }
 
     // subscribe again on (re)connect to handle refreshes / reconnects
     const handleConnect = () => {
       mqttClient.subscribe('battleship/global/news');
       mqttClient.subscribe('battleship/status/dashboard');
+      mqttClient.subscribe('battleship/admin/alert');
     };
 
     mqttClient.on('connect', handleConnect);
@@ -262,6 +278,7 @@ const Lobby = () => {
     return () => {
       mqttClient.unsubscribe('battleship/global/news');
       mqttClient.unsubscribe('battleship/status/dashboard');
+      mqttClient.unsubscribe('battleship/admin/alert');
       mqttClient.off('connect', handleConnect);
       mqttClient.off('message', handleMqttMessage);
     };
