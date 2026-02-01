@@ -7,6 +7,7 @@ import GameBoard from './GameBoard';
 import BattleField from './BattleField';
 import mqttClient from '../api/mqtt';
 import GlobalChat from './GlobalChat'
+import API from '../api/axios';
 
 const Lobby = () => {
   // extract roomId from URL parameters and initialize navigation hook
@@ -30,6 +31,18 @@ const Lobby = () => {
   const [lastShot, setLastShot] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [myStats, setMyStats] = useState(null);
+  const [newsList, setNewsList] = useState([]);
+  const [showNewsModal, setShowNewsModal] = useState(false);
+
+  const fetchNews = async () => {
+    try {
+      const response = await API.get('/news');
+      setNewsList(response.data);
+      setShowNewsModal(true);
+    } catch (err) {
+      toast.error('Could not load news');
+    }
+  };
 
   // calls backend API to get persistent game history summary
   const fetchMyStats = async () => {
@@ -296,6 +309,24 @@ const Lobby = () => {
           </div>
         </div>
       )}
+
+      {showNewsModal && (
+        <div className="stats-modal-overlay" onClick={() => setShowNewsModal(false)}>
+          <div className="stats-modal news-modal-content" onClick={e => e.stopPropagation()}>
+            <button className="close-modal" onClick={() => setShowNewsModal(false)}>✖</button>
+            <h3>📢 News</h3>
+            <div className="news-list-scroll">
+              {newsList.length === 0 ? <p>No news yet.</p> : newsList.map(n => (
+                <div key={n.id} className="lobby-news-card">
+                  <h4>{n.title}</h4>
+                  <small>{new Date(n.created_at).toLocaleDateString()}</small>
+                  <p>{n.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* room join screen */}
       {!isJoined && (
@@ -322,6 +353,7 @@ const Lobby = () => {
           >
             Commander Search 🔍
           </button>
+          <button className="floating-news-btn" onClick={fetchNews}>📰</button>
 
           {/* MQTT News Feed - displaying auto-dismissing news bubbles */}
           <div className="global-news-feed">

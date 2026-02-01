@@ -14,11 +14,18 @@ function AdminPanel() {
   const [editingHistoryId, setEditingHistoryId] = useState(null);
   const [editingReason, setEditingReason] = useState('');
 
+  const [newsList, setNewsList] = useState([]);
+  const [newNews, setNewNews] = useState({ title: '', content: '' });
+  const [loadingNews, setLoadingNews] = useState(false);
+  const [editingNewsId, setEditingNewsId] = useState(null);
+  const [editingNewsContent, setEditingNewsContent] = useState({ title: '', content: '' });
+
   const [activeTab, setActiveTab] = useState('reports');
 
   useEffect(() => {
     fetchReports(true);
     fetchGameHistory(true);
+    fetchNews(true);
   }, []);
 
   const fetchReports = async (showLoader = false) => {
@@ -187,11 +194,65 @@ function AdminPanel() {
     }
   };
 
+  const fetchNews = async (showLoader = false) => {
+    if (showLoader) setLoadingNews(true);
+    try {
+      const response = await API.get('/news');
+      setNewsList(response.data);
+    } catch (err) {
+      toast.error('Failed to load news');
+    } finally {
+      if (showLoader) setLoadingNews(false);
+    }
+  };
+
+  const handleCreateNews = async (e) => {
+    e.preventDefault();
+    if (!newNews.title || !newNews.content) return toast.error('Fill all fields');
+
+    try {
+      await API.post('/news', newNews);
+      toast.success('News published');
+      setNewNews({ title: '', content: '' });
+      fetchNews(false);
+    } catch (err) {
+      toast.error('Failed to publish news');
+    }
+  };
+
+  const handleEditNews = (news) => {
+    setEditingNewsId(news.id);
+    setEditingNewsContent({ title: news.title, content: news.content });
+  };
+
+  const handleSaveNews = async (id) => {
+    try {
+      await API.put(`/news/${id}`, editingNewsContent);
+      toast.success('News updated');
+      setEditingNewsId(null);
+      fetchNews(false);
+    } catch (err) {
+      toast.error('Failed to update news');
+    }
+  };
+
+  const handleDeleteNews = (id) => {
+    toast((t) => (
+      <div className="confirm-toast">
+        <span>Delete this news?</span>
+        <div className="confirm-actions">
+          <button className="btn-yes" onClick={() => { API.delete(`/news/${id}`).then(() => { toast.success('News deleted'); fetchNews(false); toast.dismiss(t.id); }); }}>Yes</button>
+          <button className="btn-no" onClick={() => toast.dismiss(t.id)}>No</button>
+        </div>
+      </div>
+    ), { duration: 4000 });
+  };
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
         <h1>Admin Panel</h1>
-        <p>Manage reports and game history</p>
+        <p>Manage reports, game history and news</p>
       </div>
 
       <div className="admin-tabs">
@@ -206,6 +267,12 @@ function AdminPanel() {
           onClick={() => setActiveTab('history')}
         >
           📊 Game History
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'news' ? 'active' : ''}`} 
+          onClick={() => setActiveTab('news')}
+        >
+          📢 News
         </button>
       </div>
 
@@ -369,6 +436,59 @@ function AdminPanel() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {activeTab === 'news' && (
+        <div className="admin-section">
+          <h2>Manage News</h2>
+          
+          <form onSubmit={handleCreateNews} className="report-form" style={{marginBottom: '2rem'}}>
+            <h3>Publish New Announcement</h3>
+            <input type="text" placeholder="News Title" value={newNews.title} onChange={(e) => setNewNews({...newNews, title: e.target.value})} />
+            <textarea placeholder="News Content..." value={newNews.content} onChange={(e) => setNewNews({...newNews, content: e.target.value})} rows="4"></textarea>
+            <button type="submit" className="btn-primary">Publish News</button>
+          </form>
+
+          <div className="reports-container">
+             {loadingNews ? <p>Loading news...</p> : (
+               <div className="reports-list">
+                 {newsList.map(n => (
+                   <div key={n.id} className="report-card resolved" style={{borderLeftColor: '#9c27b0'}}>
+                      {editingNewsId === n.id ? (
+                        <div className="report-content" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+                           <input className="edit-input" value={editingNewsContent.title} onChange={(e) => setEditingNewsContent({...editingNewsContent, title: e.target.value})} />
+                           <textarea className="edit-input" rows="3" value={editingNewsContent.content} onChange={(e) => setEditingNewsContent({...editingNewsContent, content: e.target.value})} />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="report-header">
+                            <div className="report-info">
+                              <span className="report-author"><strong>{n.title}</strong></span>
+                              <span className="report-date">{new Date(n.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                          <div className="report-content"><p className="report-message">{n.content}</p></div>
+                        </>
+                      )}
+                      
+                      <div className="report-actions">
+                         {editingNewsId === n.id ? (
+                           <>
+                             <button className="btn-save" onClick={() => handleSaveNews(n.id)}>💾 Save</button>
+                             <button className="btn-cancel" onClick={() => setEditingNewsId(null)}>✕ Cancel</button>
+                           </>
+                         ) : (
+                           <>
+                             <button className="btn-edit" onClick={() => handleEditNews(n)}>✏️ Edit</button>
+                             <button className="btn-delete" onClick={() => handleDeleteNews(n.id)}>🗑️ Delete</button>
+                           </>
+                         )}
+                      </div>
+                   </div>
+                 ))}
+               </div>
+             )}
           </div>
         </div>
       )}
