@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import API from '../api/axios';
-import '../styles/pages/_admin.scss';
 
 function AdminPanel() {
 
@@ -10,6 +9,7 @@ function AdminPanel() {
   const [loadingReports, setLoadingReports] = useState(false);
 
   const [gameHistory, setGameHistory] = useState([]);
+  const [newGameRecord, setNewGameRecord] = useState({ winner: '', loser: '', reason: 'destruction' });
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [editingHistoryId, setEditingHistoryId] = useState(null);
   const [editingReason, setEditingReason] = useState('');
@@ -113,6 +113,25 @@ function AdminPanel() {
       console.error(err);
     } finally {
       if (showLoader) setLoadingHistory(false);
+    }
+  };
+
+  const handleCreateGameHistory = async (e) => {
+    e.preventDefault();
+    if (!newGameRecord.winner || !newGameRecord.loser) {
+      return toast.error('Fill in all fields');
+    }
+    try {
+      await API.post('/admin/history', { 
+        winner_username: newGameRecord.winner, 
+        loser_username: newGameRecord.loser, 
+        finish_reason: newGameRecord.reason 
+      });
+      toast.success('Record added manually');
+      setNewGameRecord({ winner: '', loser: '', reason: 'destruction' });
+      fetchGameHistory(false);
+    } catch (err) {
+      toast.error('Failed to add record');
     }
   };
 
@@ -252,6 +271,17 @@ function AdminPanel() {
       {activeTab === 'history' && (
         <div className="admin-section">
           <h2>Game History</h2>
+
+          <form onSubmit={handleCreateGameHistory} className="report-form" style={{marginBottom: '2rem'}}>
+            <h3>Add New Game Record (Manual, in case of emergency)</h3>
+            <input type="text" placeholder="Winner Username" value={newGameRecord.winner} onChange={(e) => setNewGameRecord({...newGameRecord, winner: e.target.value})} />
+            <input type="text" placeholder="Loser Username" value={newGameRecord.loser} onChange={(e) => setNewGameRecord({...newGameRecord, loser: e.target.value})} />
+            <select value={newGameRecord.reason} onChange={(e) => setNewGameRecord({...newGameRecord, reason: e.target.value})} style={{padding: '0.75rem', borderRadius: '4px', border: '1px solid #444'}}>
+              <option value="destruction">destruction</option>
+              <option value="forfeit">forfeit</option>
+            </select>
+            <button type="submit" className="btn-primary">Add Record</button>
+          </form>
 
           <div className="history-container">
             {loadingHistory ? (

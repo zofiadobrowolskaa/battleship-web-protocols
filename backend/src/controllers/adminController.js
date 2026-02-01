@@ -54,6 +54,20 @@ const deleteReport = async (req, res) => {
 
 // game history controllers
 
+// create a new game history record
+const createGameHistory = async (req, res) => {
+  const { winner_username, loser_username, finish_reason } = req.body;
+  try {
+    const result = await db.query(
+      'INSERT INTO games_history (winner_username, loser_username, finish_reason) VALUES ($1, $2, $3) RETURNING *',
+      [winner_username, loser_username, finish_reason]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ message: 'Error creating game record' });
+  }
+};
+
 // retrieve full game history
 const getAllHistory = async (req, res) => {
   try {
@@ -92,5 +106,5 @@ const deleteHistory = async (req, res) => {
 
 module.exports = {
   createReport, getReports, updateReport, deleteReport,
-  getAllHistory, updateHistory, deleteHistory
+  getAllHistory, updateHistory, deleteHistory, createGameHistory
 };
