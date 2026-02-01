@@ -1,49 +1,61 @@
-**Battleship Real-Time Multiplayer**
+# Battleship Real-Time Multiplayer
 
 A high-performance, real-time Battleship game featuring multi-protocol communication, secure authentication, and a responsive tactical interface. This project explores the synergy between WebSockets for gameplay, MQTT for system-wide telemetry, and REST API for user management.
 
-**Tech Stack:**
-* **Frontend** - React, Vite, SCSS, Socket.io-client, MQTT.js
-* **Backend** - Node.js, Express, Socket.io, MQTT
-* **Database** - PostgreSQL
-* **Protocols** - HTTP/REST, WebSockets (WS), MQTT
-* **Security** - JSON Web Tokens, Bcrypt, Helmet, Cookie-parser
+## Tech Stack
+* **Frontend:** React, Vite, SCSS, Socket.io-client, MQTT.js, React-Hot-Toast
+* **Backend:** Node.js, Express, Socket.io, MQTT
+* **Database:** PostgreSQL
+* **Protocols:** HTTP/REST, WebSockets (WS), MQTT
+* **Security:** JSON Web Tokens, Bcrypt, Helmet, Cookie-parser
 
-**Core Features:**
+## Core Features
 
-**1. Real-Time Communication**
-* **WebSockets (Socket.IO):** Powers the core gameplay loop, including shot synchronization, turn management, and instant in-game messaging.
+### 1. Real-Time Communication
+* **WebSockets (Socket.IO):** Powers the core gameplay loop and instant interactions.
+    * **Game Synchronization:** Real-time shot handling, turn management, and board updates.
+    * **Room Management:** Creating and joining private game rooms (max 2 players).
+    * **In-Game Chat:** Private messaging between opponents with persistent history.
+    * **Typing Indicators:** Visual cues displaying when the opponent is typing a message.
 
-* **MQTT (HiveMQ):**
+* **MQTT (HiveMQ):** Handles decoupled, one-to-many broadcasting.
+    * `battleship/status/dashboard`: Real-time server metrics (online players, active rooms, uptime).
+    * `battleship/global/news`: Global ticker for game events (start, win, sunk ships).
+    * `battleship/global/chat`: Public lobby chat accessible to all connected players.
+    * `battleship/admin/alert`: Critical system-wide notifications broadcasted by admins directly to players' screens.
 
- - ```battleship/status/dashboard```: Real-time server metrics (online players, active rooms, uptime).
- - ```battleship/global/news```: Global notifications about game starts, players joining rooms, and tactical achievements like sinking ships or victories.
+### 2. Admin Ecosystem & Management
+A secured dashboard accessible only to administrators, featuring full CRUD capabilities:
+* **News Management:** Create, read, update, and delete server announcements visible in the Lobby.
+* **Game History Control:** Monitor full match logs and manually manage records.
+* **Admin Board:** Internal communication tool for admins to create notes, tasks, and reports.
+* **Alert Broadcast:** Interface to send instant "Toast" notifications to all active users via MQTT.
 
-**2. Secure Infrastructure**
+### 3. Secure Infrastructure
 * **JWT & HttpOnly Cookies:** Industry-standard authentication flow protecting user sessions from XSS and CSRF attacks.
 
 * **Bcrypt Hashing:** All user credentials are encrypted before storage in the PostgreSQL database.
 
-* **Audit Logging:** Integrated morgan with a custom file-system stream to maintain a persistent access.log of all network traffic.
+* **Audit Logging:** Integrated morgan with a custom file-system stream to maintain a persistent `access.log` of all network traffic.
 
-**3. Gameplay & UX**
+**4. Gameplay & UX**
 * **Tactical Search:** A REST-compliant search engine using PostgreSQL ILIKE patterns to find and inspect other commanders' statistics.
 
 * **Ship Deployment:** Advanced grid system with adjacency validation (ships cannot touch) and responsive scaling for mobile devices.
 
 * **Forfeit System:** Automatically handles disconnections by awarding victory to the remaining player if a match was in progress.
 
-* **Responsive SCSS:** A modular styling architecture using Media Queries.
+* **Responsive SCSS:** A modular styling architecture using Media Queries for seamless mobile and desktop experience.
 
- **Project Structure**
+## Project Structure
 
 * **backend**: Node.js server handling game logic, database interactions, and MQTT broadcasts.
 
 * **frontend**: React application with tactical interface and ship placement mechanics.
 
- **Installation & Setup**
+## Installation & Setup
 
-**Prerequisites**
+### Prerequisites
 
 * Node.js (v18 or higher)
 * PostgreSQL database
@@ -87,3 +99,4 @@ cd frontend
 npm install
 npm run dev # starts the development server at http://localhost:5173
 ```
+
