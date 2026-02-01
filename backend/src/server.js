@@ -346,6 +346,13 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('receive_message', messageData);
   });
 
+  // event: typing indicator
+  socket.on('typing', (data) => {
+    const { roomId, username } = data;
+    // broadcast to everyone else in the room (excluding sender)
+    socket.to(roomId).emit('display_typing', { username });
+  });
+
   // remove player from the room state
   socket.on('disconnect', () => {
     const roomId = socket.currentRoom;
