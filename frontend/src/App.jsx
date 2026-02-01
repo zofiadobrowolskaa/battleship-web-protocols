@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './components/Profile';
 import API from './api/axios';
 import CommanderSearch from './components/CommanderSearch';
+import AdminPanel from './components/AdminPanel';
 
 function App() {
   // verify authentication by checking if username exists in session storage
@@ -51,6 +52,7 @@ function App() {
             <>
               <Link to="/profile">Profile</Link>
               <Link to="/lobby">Lobby</Link>
+              <Link to="/admin">Admin</Link>
               <a href="/" onClick={handleLogout} className="logout-link">
                 Logout
               </a>
@@ -83,6 +85,13 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile onLogout={handleLogout} />
+            </ProtectedRoute>
+          } 
+        />
+        <Route path="/admin" 
+          element={
+            <ProtectedRoute>
+              <AdminPanel />
             </ProtectedRoute>
           } 
         />
