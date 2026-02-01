@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import API from '../api/axios';
+import mqttClient from '../api/mqtt';
 
 function AdminPanel() {
 
@@ -19,6 +20,8 @@ function AdminPanel() {
   const [loadingNews, setLoadingNews] = useState(false);
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [editingNewsContent, setEditingNewsContent] = useState({ title: '', content: '' });
+
+  const [alertMsg, setAlertMsg] = useState('');
 
   const [activeTab, setActiveTab] = useState('reports');
 
@@ -248,6 +251,16 @@ function AdminPanel() {
     ), { duration: 4000 });
   };
 
+  const handleSendAlert = (e) => {
+    e.preventDefault();
+    if (!alertMsg.trim()) return;
+
+    mqttClient.publish('battleship/admin/alert', alertMsg);
+
+    toast.success('🚨 Alert Broadcasted!');
+    setAlertMsg('');
+  };
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
@@ -441,6 +454,24 @@ function AdminPanel() {
       )}
       {activeTab === 'news' && (
         <div className="admin-section">
+              <div className="admin-alert-box">
+          <h3>🚨 Alert Broadcast</h3>
+          <p>
+            Send an instant notification to all active players in the Lobby.
+          </p>
+          
+          <div className="alert-controls">
+            <input 
+              type="text" 
+              value={alertMsg} 
+              onChange={(e) => setAlertMsg(e.target.value)}
+              placeholder="Type your message here..."
+            />
+            <button onClick={handleSendAlert}>
+              SEND ALERT
+            </button>
+          </div>
+        </div>
           <h2>Manage News</h2>
           
           <form onSubmit={handleCreateNews} className="report-form" style={{marginBottom: '2rem'}}>
