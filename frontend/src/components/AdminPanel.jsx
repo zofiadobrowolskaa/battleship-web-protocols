@@ -37,7 +37,7 @@ function AdminPanel() {
       const response = await API.get('/admin/reports');
       setReports(response.data);
     } catch (err) {
-      toast.error('Failed to load reports');
+      toast.error('Failed to load notes');
       console.error(err);
     } finally {
       if (showLoader) setLoadingReports(false);
@@ -49,7 +49,7 @@ function AdminPanel() {
     const currentUsername = sessionStorage.getItem('username');
 
     if (!currentUsername) {
-      toast.error('You must be logged in to send a report');
+      toast.error('You must be logged in to send a note');
       return;
     }
     if (!newReport.message) {
@@ -71,10 +71,10 @@ function AdminPanel() {
   const handleResolveReport = async (id, currentStatus) => {
     try {
       await API.put(`/admin/reports/${id}`, { is_resolved: !currentStatus });
-      toast.success('Report updated');
+      toast.success('Note updated');
       fetchReports(false);
     } catch (err) {
-      toast.error('Failed to update report');
+      toast.error('Failed to update note');
       console.error(err);
     }
   };
@@ -82,7 +82,7 @@ function AdminPanel() {
   const handleDeleteReport = (id) => {
     toast((t) => (
       <div className="confirm-toast">
-        <span>Delete this report?</span>
+        <span>Delete this note?</span>
         <div className="confirm-actions">
           <button
             className="btn-yes"
@@ -105,10 +105,10 @@ function AdminPanel() {
     toast.dismiss(toastId);
     try {
       await API.delete(`/admin/reports/${id}`);
-      toast.success('Report deleted');
+      toast.success('Note deleted');
       fetchReports(false);
     } catch (err) {
-      toast.error('Failed to delete report');
+      toast.error('Failed to delete note');
       console.error(err);
     }
   };
