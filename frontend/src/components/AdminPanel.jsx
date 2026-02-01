@@ -56,11 +56,11 @@ function AdminPanel() {
 
     try {
       await API.post('/admin/reports', { username: currentUsername, message: newReport.message });
-      toast.success('Report created successfully');
+      toast.success('Note created successfully');
       setNewReport({ message: '' });
       fetchReports(false);
     } catch (err) {
-      toast.error('Failed to create report');
+      toast.error('Failed to create note');
       console.error(err);
     }
   };
@@ -252,7 +252,7 @@ function AdminPanel() {
     <div className="admin-panel">
       <div className="admin-header">
         <h1>Admin Panel</h1>
-        <p>Manage reports, game history and news</p>
+        <p>Manage tasks, game history and news</p>
       </div>
 
       <div className="admin-tabs">
@@ -260,7 +260,7 @@ function AdminPanel() {
           className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
           onClick={() => setActiveTab('reports')}
         >
-          📋 Reports
+          📋 Admin Board
         </button>
         <button
           className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
@@ -278,23 +278,23 @@ function AdminPanel() {
 
       {activeTab === 'reports' && (
         <div className="admin-section">
-          <h2>User Reports</h2>
+          <h2>Internal Admin Tasks</h2>
 
           <form onSubmit={handleCreateReport} className="report-form">
             <textarea
-              placeholder="Describe your issue or feedback..."
+              placeholder="Add a task or note for other..."
               value={newReport.message}
               onChange={(e) => setNewReport({ ...newReport, message: e.target.value })}
               rows="3"
             ></textarea>
-            <button type="submit" className="btn-primary">Create Report</button>
+            <button type="submit" className="btn-primary">Create Note</button>
           </form>
 
           <div className="reports-container">
             {loadingReports ? (
               <p>Loading reports...</p>
             ) : reports.length === 0 ? (
-              <p>No reports yet</p>
+              <p>No tasks yet</p>
             ) : (
               <div className="reports-list">
                 {reports.map((report) => (
