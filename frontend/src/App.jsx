@@ -1,4 +1,4 @@
-import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useState } from 'react';
 import Login from './components/Login';
@@ -14,7 +14,9 @@ import AdminPanel from './components/AdminPanel';
 function App() {
   // verify authentication by checking if username exists in session storage
   const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('username'));
+  const [isAdminMode, setIsAdminMode] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
@@ -36,6 +38,15 @@ function App() {
     }
   };
 
+  const toggleAdminMode = () => {
+    if (isAdminMode) {
+      if (location.pathname === '/admin') {
+        navigate('/lobby');
+      }
+    }
+    setIsAdminMode(!isAdminMode);
+  };
+
   return (
     <>
       <nav className="navbar">
@@ -50,9 +61,14 @@ function App() {
             </>
           ) : (
             <>
+              <button 
+                onClick={toggleAdminMode}  className="nav-btn"
+              >
+                {isAdminMode ? "Switch to Client" : "Switch to Administrator"}
+              </button>
               <Link to="/profile">Profile</Link>
               <Link to="/lobby">Lobby</Link>
-              <Link to="/admin">Admin</Link>
+              {isAdminMode && <Link to="/admin">Admin</Link>}
               <a href="/" onClick={handleLogout} className="logout-link">
                 Logout
               </a>
