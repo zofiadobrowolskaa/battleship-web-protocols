@@ -37,6 +37,9 @@ const initDb = require('./models/initDb');
 const GameModel = require('./models/gameModel');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const newsRoutes = require('./routes/newsRoutes');
+const { protect } = require('./middleware/authMiddleware');
 
 const app = express();
 
@@ -110,6 +113,8 @@ app.use(cookieParser());
 // routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', protect, adminRoutes);
+app.use('/api/news', newsRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });

@@ -14,8 +14,23 @@ const initDb = async () => {
       id SERIAL PRIMARY KEY,
       winner_username VARCHAR(50) NOT NULL,
       loser_username VARCHAR(50) NOT NULL,
-      finish_reason VARCHAR(20) NOT NULL, -- 'destruction' or 'forfeit'
+      finish_reason VARCHAR(20) NOT NULL,
       played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS reports (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      message TEXT NOT NULL,
+      is_resolved BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS news (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(100) NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `;
 
