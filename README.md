@@ -1,4 +1,4 @@
-# ⚓ Battleship: Real-Time Multiplayer Naval Combat
+# Battleship: Real-Time Multiplayer Naval Combat
 
 <div align="center">
 
@@ -169,7 +169,7 @@ Secured admin panel (`/admin`) with authentication middleware:
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Frontend
 | Technology | Version | Purpose |
@@ -290,8 +290,6 @@ npm install
 ```
 
 ### Step 5: Start the Application
-
-#### Option A: Development Mode (Recommended)
 
 **Terminal 1** - Start backend:
 ```bash
